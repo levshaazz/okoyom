@@ -1,0 +1,92 @@
+---
+import Base from '../layouts/Base.astro';
+import { EnterButton } from '../components/chrome';
+import { CHRONICLE, DISCOVERIES, JOBS, LANDING, OMENS } from '../data/public';
+import { href } from '../lib/paths';
+
+function diamonds(n: number) {
+  return Array.from({ length: 5 }, (_, i) => (i < n ? '◆' : '◇'));
+}
+---
+
+<Base title="Окоём · Ходоки" page="home">
+  <section class="landing-hero">
+    <img class="landing-bg" src={href('img/prichal.jpg')} alt="" />
+    <div class="landing-shade"></div>
+    <div class="landing-copy">
+      <div class="kicker">{LANDING.kicker}</div>
+      <h1>{LANDING.title}</h1>
+      <p class="lede">{LANDING.lede}</p>
+      <div class="landing-actions">
+        <EnterButton client:load look="btn pri" label="Войти героем" />
+        <a class="btn" href={href('/kontora')}>Доска Конторы</a>
+        <a class="btn ghost" href={href('/biblioteka')}>Как играть</a>
+      </div>
+    </div>
+    <aside class="panel outing">
+      <div class="ptitle">Ближайшая вылазка</div>
+      <div class="sc salt">{LANDING.outing.title}</div>
+      <div class="dim small">{LANDING.outing.meta}</div>
+      <div class="rule"></div>
+      <p class="small">{LANDING.outing.text}</p>
+      <p class="xs dim">{LANDING.outing.party}</p>
+    </aside>
+  </section>
+
+  <section class="landing-grid">
+    <article class="panel gl span-2">
+      <div class="ptitle">Доска Конторы</div>
+      <ul class="jobs">
+        <li class="hd"><span>Заказ</span><span>Где</span><span>Угроза</span><span>Плата</span></li>
+        {JOBS.map((job) => (
+          <li>
+            <span>
+              <span class="salt">{job.title}</span>
+              <span class="xs dim block-line">{job.from}</span>
+            </span>
+            <span>{job.where}</span>
+            <span class={job.threatMark ? 'warn' : 'gold'}>
+              {job.threatMark ? `◆◆◆◆◆ ${job.threatMark}` : diamonds(job.threat).join('')}
+            </span>
+            <span>{job.pay}</span>
+          </li>
+        ))}
+      </ul>
+    </article>
+    <article class="panel gl">
+      <div class="ptitle">Летопись</div>
+      {CHRONICLE.map((entry) => (
+        <div>
+          <div class="kicker xs">{entry.realDate} · {entry.gameDate}</div>
+          <h2>{entry.title}</h2>
+          <p class="small">{entry.body}</p>
+          <div class="tag-row">
+            {entry.tags.map((tag) => (
+              <span class={tag.kind === 'ok' ? 'badge ok' : 'badge ru'}>{tag.text}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </article>
+    <article class="panel gl">
+      <div class="ptitle">Приметы</div>
+      <ul class="omen-list small">
+        {OMENS.map((omen) => (
+          <li>◇ {omen}</li>
+        ))}
+      </ul>
+    </article>
+  </section>
+
+  <div class="panel discover">
+    <span class="sc salt">Недавно открыто</span>
+    {DISCOVERIES.map((item) => (
+      <span class={item.kind === 'rumor' ? 'badge ru' : 'badge g'}>{item.text}</span>
+    ))}
+    <a class="gold small" href={href('/viki')}>Вся вики →</a>
+  </div>
+  <p class="legal">
+    Пробный срез. «Войти героем» — переключатель роли в этом браузере, не учётная запись и не защита.
+    Тайн кампании в сайте нет. Правки листа хранятся локально, пока не появится Supabase.
+  </p>
+</Base>

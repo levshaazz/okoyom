@@ -1,0 +1,55 @@
+---
+import '@fontsource/eb-garamond/400.css';
+import '@fontsource/eb-garamond/500.css';
+import '@fontsource/eb-garamond/600.css';
+import '@fontsource/eb-garamond/400-italic.css';
+import '@fontsource/cormorant-sc/600.css';
+import '@fontsource/cormorant-garamond/500.css';
+import '@fontsource/cormorant-garamond/600.css';
+import '@fontsource/alegreya-sc/400.css';
+import '@fontsource/alegreya-sc/500.css';
+import '@fontsource/alegreya-sans/400.css';
+import '@fontsource/alegreya-sans/700.css';
+import '@fontsource/marck-script/400.css';
+import '../styles/global.css';
+import Chrome from '../components/chrome';
+
+interface Props {
+  title: string;
+  page: string;
+}
+
+const { title, page } = Astro.props;
+const csp = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ');
+---
+
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0d10" />
+    <meta http-equiv="Content-Security-Policy" content={csp} />
+    <link rel="icon" href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/favicon.svg`} type="image/svg+xml" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <Chrome client:load page={page} />
+    <main id="main">
+      <slot />
+    </main>
+    <noscript>
+      <p class="noscript">Нужен JavaScript: лист и сумка этого среза живут в браузере.</p>
+    </noscript>
+  </body>
+</html>

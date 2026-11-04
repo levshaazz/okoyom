@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import { JOBS } from '../data/public';
+
+function diamonds(n: number) {
+  return Array.from({ length: 5 }, (_, i) => (i < n ? '◆' : '◇')).join('');
+}
+---
+
+<Base title="Контора · Окоём" page="kontora">
+  <div class="page">
+    <h1>Доска Конторы</h1>
+    <p class="dim">Открытые заказы. Запись на вылазку появится вместе с сервером.</p>
+    <article class="panel">
+      <ul class="jobs">
+        {JOBS.map((job) => (
+          <li>
+            <span><span class="salt">{job.title}</span><span class="xs dim block-line">{job.from}</span></span>
+            <span>{job.where}</span>
+            <span class={job.threatMark ? 'warn' : 'gold'}>{job.threatMark ? `◆◆◆◆◆ ${job.threatMark}` : diamonds(job.threat)}</span>
+            <span>{job.pay}</span>
+          </li>
+        ))}
+      </ul>
+    </article>
+  </div>
+</Base>

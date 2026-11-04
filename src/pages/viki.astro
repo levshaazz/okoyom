@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import { DISCOVERIES } from '../data/public';
+---
+
+<Base title="Вики · Окоём" page="viki">
+  <div class="page stub">
+    <h1>Вики</h1>
+    <p>Открытый слой. Текстов статей в этом срезе нет — только заголовки с главной, без заметок мастера.</p>
+    <ul class="plain-list">
+      {DISCOVERIES.map((item) => (
+        <li><span class={item.kind === 'rumor' ? 'badge ru' : 'badge g'}>{item.text}</span></li>
+      ))}
+    </ul>
+  </div>
+</Base>
