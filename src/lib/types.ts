@@ -414,7 +414,7 @@ export interface World {
   map_routes: MapRoute[];
 }
 
-export const SEED_REVISION = 4;
+export const SEED_REVISION = 5;
 
 export interface OpMeta {
   id: string;

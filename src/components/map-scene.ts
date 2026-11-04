@@ -1,5 +1,14 @@
+import { decode } from 'fast-png';
 import { MAP_MANIFEST, type HeightEncoding } from '../data/map-manifest';
-import { isWater, sampleColor, sampleHeight } from '../lib/map-height';
+import {
+  blurRect,
+  isWater,
+  liftMeters,
+  normalizedToMeters,
+  proceduralNormalized,
+  resampleU16,
+  sampleColor,
+} from '../lib/map-height';
 import type { SceneLayers, SceneMarker, ScenePin, SceneRoute, SceneZone } from '../lib/map-view-model';
 import * as THREE from 'three';
 
@@ -20,15 +29,17 @@ export interface MapScene {
 }
 
 const MAP_W = 24;
-const MAP_D = MAP_W * (MAP_MANIFEST.heightVersts / MAP_MANIFEST.widthVersts);
+const MAP_D = MAP_W * (MAP_MANIFEST.heightSpan / MAP_MANIFEST.widthSpan);
 
-function lift(height: number): number {
-  const amp = Math.min(MAP_W, MAP_D) * MAP_MANIFEST.heightScale;
-  return (height - MAP_MANIFEST.seaLevel) * amp;
+function lift(height01: number): number {
+  return liftMeters(normalizedToMeters(height01), MAP_W);
 }
 
+/** Подменяется сеткой загруженного края. Пока файлы не прочитаны — процедурный запас. */
+let sampleTerrain = proceduralNormalized;
+
 function place(nx: number, ny: number, height?: number): THREE.Vector3 {
-  const h = height ?? sampleHeight(nx, ny);
+  const h = height ?? sampleTerrain(nx, ny);
   return new THREE.Vector3((nx - 0.5) * MAP_W, lift(h), (ny - 0.5) * MAP_D);
 }
 
@@ -51,6 +62,85 @@ async function loadImage(url: string): Promise<ImageData | null> {
   } catch {
     return null;
   }
+}
+
+async function loadU16(url: string): Promise<{ data: Uint16Array; width: number; height: number } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const png = decode(new Uint8Array(await response.arrayBuffer()));
+    if (png.depth !== 16) return null;
+    const pixels = png.width * png.height;
+    if (png.channels === 1 && png.data instanceof Uint16Array) {
+      return { data: png.data, width: png.width, height: png.height };
+    }
+    const view =
+      png.data instanceof Uint16Array
+        ? png.data
+        : new Uint16Array(png.data.buffer, png.data.byteOffset, Math.floor(png.data.byteLength / 2));
+    const data = new Uint16Array(pixels);
+    for (let i = 0; i < pixels; i++) data[i] = view[i * png.channels] ?? 0;
+    return { data, width: png.width, height: png.height };
+  } catch {
+    return null;
+  }
+}
+
+function packU16(src: Uint16Array, w: number, h: number): THREE.DataTexture {
+  const bytes = new Uint8Array(w * h * 4);
+  for (let i = 0; i < src.length; i++) {
+    const v = src[i] ?? 0;
+    bytes[i * 4] = (v >> 8) & 255;
+    bytes[i * 4 + 1] = v & 255;
+    bytes[i * 4 + 3] = 255;
+  }
+  const tex = new THREE.DataTexture(bytes, w, h);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.flipY = true;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function smoothNormals(positions: Float32Array, segX: number, segY: number, stride: number): Float32Array {
+  const gw = segX + 1;
+  const gh = segY + 1;
+  const normals = new Float32Array(gw * gh * 3);
+  const at = (ix: number, iy: number) => {
+    const i = (iy * gw + ix) * 3;
+    return [positions[i] ?? 0, positions[i + 1] ?? 0, positions[i + 2] ?? 0];
+  };
+  for (let iy = 0; iy < gh; iy++) {
+    for (let ix = 0; ix < gw; ix++) {
+      const l = at(Math.max(0, ix - stride), iy);
+      const r = at(Math.min(segX, ix + stride), iy);
+      const u = at(ix, Math.max(0, iy - stride));
+      const d = at(ix, Math.min(segY, iy + stride));
+      const ex = r[0]! - l[0]!;
+      const ey = r[1]! - l[1]!;
+      const ez = r[2]! - l[2]!;
+      const sx = d[0]! - u[0]!;
+      const sy = d[1]! - u[1]!;
+      const sz = d[2]! - u[2]!;
+      let nx = ey * sz - ez * sy;
+      let ny = ez * sx - ex * sz;
+      let nz = ex * sy - ey * sx;
+      if (ny < 0) {
+        nx = -nx;
+        ny = -ny;
+        nz = -nz;
+      }
+      const len = Math.hypot(nx, ny, nz) || 1;
+      const o = (iy * gw + ix) * 3;
+      normals[o] = nx / len;
+      normals[o + 1] = ny / len;
+      normals[o + 2] = nz / len;
+    }
+  }
+  return normals;
 }
 
 function sampler(data: ImageData | null, encoding: HeightEncoding): ((nx: number, ny: number) => number) | null {
@@ -121,20 +211,77 @@ export async function mountMapScene(
   const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
   if (!gl) throw new Error('webgl');
 
-  const heightImage = MAP_MANIFEST.heightUrl ? await loadImage(MAP_MANIFEST.heightUrl) : null;
-  const heightAt = sampler(heightImage, MAP_MANIFEST.heightEncoding) ?? sampleHeight;
-  const waterImage = MAP_MANIFEST.waterUrl ? await loadImage(MAP_MANIFEST.waterUrl) : null;
-  const waterAt =
-    sampler(waterImage, 'r8') ??
-    ((nx: number, ny: number) => (heightImage ? heightAt(nx, ny) < MAP_MANIFEST.seaLevel : isWater(nx, ny)) ? 1 : 0);
-  const waterBool = (nx: number, ny: number) => waterAt(nx, ny) > 0.5;
+  const painted =
+    MAP_MANIFEST.heightEncoding === 'u16' && MAP_MANIFEST.heightUrl ? await loadU16(MAP_MANIFEST.heightUrl) : null;
+  const legacy =
+    !painted && MAP_MANIFEST.heightUrl && MAP_MANIFEST.heightEncoding !== 'u16'
+      ? await loadImage(MAP_MANIFEST.heightUrl)
+      : null;
+  const legacySample = sampler(legacy, MAP_MANIFEST.heightEncoding === 'u16' ? 'r8' : MAP_MANIFEST.heightEncoding);
 
-  const seg = mobile ? 104 : 220;
+  const segX = mobile ? 168 : 336;
+  const segY = mobile ? 94 : 189;
+  const gw = segX + 1;
+  const gh = segY + 1;
+  const waterW = 512;
+  const waterH = 288;
+  let meshH: Float32Array;
+  let waterU16: Uint16Array;
+  if (painted) {
+    const meshRadius = Math.max(2, Math.round(painted.width / gw / 3));
+    const raw = resampleU16(painted.data, painted.width, painted.height, gw, gh, 'avg', meshRadius);
+    const asFloat = new Float32Array(raw.length);
+    for (let i = 0; i < raw.length; i++) asFloat[i] = (raw[i] ?? 0) / 65535;
+    meshH = blurRect(asFloat, gw, gh, 1);
+    const waterRadius = Math.max(1, Math.ceil(painted.width / waterW / 2));
+    waterU16 = resampleU16(painted.data, painted.width, painted.height, waterW, waterH, 'min', waterRadius);
+  } else {
+    meshH = new Float32Array(gw * gh);
+    waterU16 = new Uint16Array(waterW * waterH);
+    for (let y = 0; y < gh; y++) {
+      for (let x = 0; x < gw; x++) {
+        const nx = x / segX;
+        const ny = y / segY;
+        meshH[y * gw + x] = legacySample ? legacySample(nx, ny) : proceduralNormalized(nx, ny);
+      }
+    }
+    meshH = blurRect(meshH, gw, gh, 1);
+    for (let y = 0; y < waterH; y++) {
+      for (let x = 0; x < waterW; x++) {
+        const nx = x / (waterW - 1);
+        const ny = y / (waterH - 1);
+        const h = legacySample ? legacySample(nx, ny) : proceduralNormalized(nx, ny);
+        waterU16[y * waterW + x] = Math.round(Math.max(0, Math.min(1, h)) * 65535);
+      }
+    }
+  }
+  const heightAt = (nx: number, ny: number) => {
+    const x = Math.min(segX, Math.max(0, nx * segX));
+    const y = Math.min(segY, Math.max(0, ny * segY));
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const x1 = Math.min(segX, x0 + 1);
+    const y1 = Math.min(segY, y0 + 1);
+    const tx = x - x0;
+    const ty = y - y0;
+    const at = (yy: number, xx: number) => meshH[yy * gw + xx] ?? 0;
+    const a = at(y0, x0) * (1 - tx) + at(y0, x1) * tx;
+    const b = at(y1, x0) * (1 - tx) + at(y1, x1) * tx;
+    return a * (1 - ty) + b * ty;
+  };
+  sampleTerrain = heightAt;
+
+  const waterImage = MAP_MANIFEST.waterUrl ? await loadImage(MAP_MANIFEST.waterUrl) : null;
+  const waterSample = sampler(waterImage, 'r8');
+  const waterBool = (nx: number, ny: number) => {
+    if (waterSample && waterSample(nx, ny) > 0.5) return true;
+    if (painted) return normalizedToMeters(heightAt(nx, ny)) < MAP_MANIFEST.seaLevelM;
+    return isWater(nx, ny) || normalizedToMeters(heightAt(nx, ny)) < MAP_MANIFEST.seaLevelM;
+  };
+
   const texSize = mobile ? 384 : 640;
-  const albedoCanvas = MAP_MANIFEST.albedoUrl
-    ? null
-    : paintAlbedo(texSize, heightAt, waterBool);
-  const waterCanvas = paintWater(mobile ? 256 : 512, waterBool);
+  const albedoCanvas = MAP_MANIFEST.albedoUrl ? null : paintAlbedo(texSize, heightAt, waterBool);
+  const waterCanvas = waterImage ? null : paintWater(mobile ? 256 : 512, waterBool);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.6));
@@ -148,7 +295,7 @@ export async function mountMapScene(
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2('#c9bea6', mobile ? 0.03 : 0.015);
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.08, 80);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.08, 140);
 
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(60, 24, 16),
@@ -182,16 +329,15 @@ export async function mountMapScene(
   scene.add(sun);
   scene.add(sun.target);
 
-  const n = seg + 1;
-  const positions = new Float32Array(n * n * 3);
-  const uvs = new Float32Array(n * n * 2);
+  const positions = new Float32Array(gw * gh * 3);
+  const uvs = new Float32Array(gw * gh * 2);
   const indices: number[] = [];
-  for (let iy = 0; iy < n; iy++) {
-    for (let ix = 0; ix < n; ix++) {
-      const nx = ix / seg;
-      const ny = iy / seg;
-      const i = iy * n + ix;
-      const p = place(nx, ny, heightAt(nx, ny));
+  for (let iy = 0; iy < gh; iy++) {
+    for (let ix = 0; ix < gw; ix++) {
+      const nx = ix / segX;
+      const ny = iy / segY;
+      const i = iy * gw + ix;
+      const p = place(nx, ny, meshH[i] ?? 0);
       positions[i * 3] = p.x;
       positions[i * 3 + 1] = p.y;
       positions[i * 3 + 2] = p.z;
@@ -199,21 +345,21 @@ export async function mountMapScene(
       uvs[i * 2 + 1] = 1 - ny;
     }
   }
-  for (let iy = 0; iy < seg; iy++) {
-    for (let ix = 0; ix < seg; ix++) {
-      const a = iy * n + ix;
-      indices.push(a, a + n, a + 1, a + 1, a + n, a + n + 1);
+  for (let iy = 0; iy < segY; iy++) {
+    for (let ix = 0; ix < segX; ix++) {
+      const a = iy * gw + ix;
+      indices.push(a, a + gw, a + 1, a + 1, a + gw, a + gw + 1);
     }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   geo.setIndex(indices);
-  geo.computeVertexNormals();
+  geo.setAttribute('normal', new THREE.BufferAttribute(smoothNormals(positions, segX, segY, 2), 3));
 
   const albedoTex = new THREE.CanvasTexture(albedoCanvas ?? document.createElement('canvas'));
   albedoTex.colorSpace = THREE.SRGBColorSpace;
-  albedoTex.anisotropy = 4;
+  albedoTex.anisotropy = mobile ? 2 : 8;
   albedoTex.wrapS = albedoTex.wrapT = THREE.ClampToEdgeWrapping;
   if (MAP_MANIFEST.albedoUrl) {
     const loaded = await new THREE.TextureLoader().loadAsync(MAP_MANIFEST.albedoUrl).catch(() => null);
@@ -221,6 +367,7 @@ export async function mountMapScene(
       loaded.colorSpace = THREE.SRGBColorSpace;
       albedoTex.dispose();
       Object.assign(albedoTex, loaded);
+      albedoTex.anisotropy = mobile ? 2 : 8;
     } else if (albedoCanvas) {
       albedoTex.image = albedoCanvas;
       albedoTex.needsUpdate = true;
@@ -238,43 +385,108 @@ export async function mountMapScene(
     new THREE.MeshStandardMaterial({ color: '#16384c', roughness: 0.35, metalness: 0.08 }),
   );
   ocean.rotation.x = -Math.PI / 2;
-  ocean.position.y = lift(0) - 0.2;
+  const sea01 =
+    (MAP_MANIFEST.seaLevelM - MAP_MANIFEST.heightMinM) /
+    (MAP_MANIFEST.heightMaxM - MAP_MANIFEST.heightMinM || 1);
+  ocean.position.y = lift(sea01) - 0.25;
   ocean.receiveShadow = true;
   scene.add(ocean);
 
-  const waterTex = new THREE.CanvasTexture(waterCanvas);
+  let waterTex: THREE.Texture;
+  if (MAP_MANIFEST.waterUrl) {
+    const loaded = await new THREE.TextureLoader().loadAsync(MAP_MANIFEST.waterUrl).catch(() => null);
+    if (loaded) {
+      loaded.colorSpace = THREE.NoColorSpace;
+      loaded.wrapS = loaded.wrapT = THREE.ClampToEdgeWrapping;
+      loaded.magFilter = THREE.LinearFilter;
+      loaded.minFilter = THREE.LinearFilter;
+      waterTex = loaded;
+    } else {
+      waterTex = new THREE.CanvasTexture(waterCanvas ?? paintWater(256, waterBool));
+    }
+  } else {
+    waterTex = new THREE.CanvasTexture(waterCanvas ?? paintWater(256, waterBool));
+  }
   waterTex.wrapS = waterTex.wrapT = THREE.ClampToEdgeWrapping;
-  const water = new THREE.Mesh(
-    new THREE.PlaneGeometry(MAP_W, MAP_D, 1, 1),
-    new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      uniforms: { uTime: { value: 0 }, uMask: { value: waterTex }, uSun: { value: new THREE.Vector3(-0.4, 0.75, -0.35).normalize() } },
-      vertexShader: `uniform float uTime; varying vec2 vUv; varying vec3 vPos;
-        void main(){
-          vUv = uv;
-          vec3 p = position;
-          p.z += sin(position.x * 1.7 + uTime * 1.4) * 0.035 + sin(position.y * 1.3 - uTime) * 0.02;
-          vec4 w = modelMatrix * vec4(p, 1.0);
-          vPos = w.xyz;
-          gl_Position = projectionMatrix * viewMatrix * w;
-        }`,
-      fragmentShader: `uniform sampler2D uMask; uniform vec3 uSun; varying vec2 vUv; varying vec3 vPos;
-        void main(){
-          float m = texture2D(uMask, vUv).r;
-          if (m < 0.5) discard;
-          vec3 viewDir = normalize(cameraPosition - vPos);
-          float fres = pow(1.0 - max(dot(viewDir, vec3(0.0,1.0,0.0)), 0.0), 2.2);
-          float spec = pow(max(dot(reflect(-uSun, vec3(0.0,1.0,0.0)), viewDir), 0.0), 48.0);
-          vec3 col = mix(vec3(0.16,0.36,0.40), vec3(0.55,0.72,0.74), fres);
-          col += spec * vec3(1.0, 0.95, 0.85) * 0.55;
-          gl_FragColor = vec4(col, 0.78);
-        }`,
-    }),
-  );
+  const heightTex = packU16(waterU16, waterW, waterH);
+  const sunDir = new THREE.Vector3(-0.4, 0.75, -0.35).normalize();
+  const waterFrag = `uniform sampler2D uMask; uniform sampler2D uHeight; uniform vec3 uSun;
+    uniform float uMin; uniform float uMax; uniform float uSea; uniform float uInland;
+    varying vec2 vUv; varying vec3 vPos;
+    void main(){
+      float m = texture2D(uMask, vUv).r;
+      vec4 enc = texture2D(uHeight, vUv);
+      float v = floor(enc.r * 255.0 + 0.5) * 256.0 + floor(enc.g * 255.0 + 0.5);
+      float meters = uMin + (v / 65535.0) * (uMax - uMin);
+      bool painted = m >= 0.5;
+      bool below = meters < uSea;
+      if (uInland > 0.5) { if (!(painted && !below)) discard; }
+      else if (!(painted || below)) discard;
+      vec3 viewDir = normalize(cameraPosition - vPos);
+      float fres = pow(1.0 - max(dot(viewDir, vec3(0.0, 1.0, 0.0)), 0.0), 2.4);
+      float spec = pow(max(dot(reflect(-uSun, vec3(0.0, 1.0, 0.0)), viewDir), 0.0), 48.0);
+      vec3 col = mix(vec3(0.10, 0.28, 0.34), vec3(0.62, 0.78, 0.78), fres);
+      col += spec * vec3(1.0, 0.95, 0.85) * 0.45;
+      gl_FragColor = vec4(col, 0.28 + fres * 0.4);
+    }`;
+  const waterUniforms = () => ({
+    uTime: { value: 0 },
+    uMask: { value: waterTex },
+    uHeight: { value: heightTex },
+    uSun: { value: sunDir },
+    uMin: { value: MAP_MANIFEST.heightMinM },
+    uMax: { value: MAP_MANIFEST.heightMaxM },
+    uSea: { value: MAP_MANIFEST.seaLevelM },
+    uInland: { value: 0 },
+  });
+  const seaMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: waterUniforms(),
+    vertexShader: `uniform float uTime; varying vec2 vUv; varying vec3 vPos;
+      void main(){
+        vUv = uv;
+        vec3 p = position;
+        p.z += sin(position.x * 1.7 + uTime * 1.4) * 0.004 + sin(position.y * 1.3 - uTime) * 0.003;
+        vec4 w = modelMatrix * vec4(p, 1.0);
+        vPos = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: waterFrag,
+  });
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(MAP_W, MAP_D, 1, 1), seaMat);
   water.rotation.x = -Math.PI / 2;
-  water.position.y = 0.02;
+  water.position.y = lift(sea01) + 0.004;
+  water.renderOrder = 2;
   scene.add(water);
+  const inlandPos = positions.slice();
+  for (let i = 1; i < inlandPos.length; i += 3) inlandPos[i] += 0.004;
+  const inlandGeo = new THREE.BufferGeometry();
+  inlandGeo.setAttribute('position', new THREE.BufferAttribute(inlandPos, 3));
+  inlandGeo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  inlandGeo.setIndex(indices);
+  const inlandMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    uniforms: waterUniforms(),
+    vertexShader: `uniform float uTime; varying vec2 vUv; varying vec3 vPos;
+      void main(){
+        vUv = uv;
+        vec3 p = position;
+        p.y += sin(p.x * 1.7 + uTime * 1.4) * 0.004 + sin(p.z * 1.3 - uTime) * 0.003;
+        vec4 w = modelMatrix * vec4(p, 1.0);
+        vPos = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: waterFrag,
+  });
+  inlandMat.uniforms.uInland!.value = 1;
+  const inland = new THREE.Mesh(inlandGeo, inlandMat);
+  inland.renderOrder = 2;
+  scene.add(inland);
 
   let fogSize = 2;
   let fogBytes = new Uint8Array(16);
@@ -339,11 +551,11 @@ export async function mountMapScene(
   };
   let fogTarget = new Float32Array(4).fill(1);
   let fogShown = fogTarget.slice();
-  let yaw = 0.35;
-  let pitch = 0.78;
-  let dist = mobile ? 16 : 15;
-  let tx = (0.42 - 0.5) * MAP_W;
-  let tz = (0.42 - 0.5) * MAP_D;
+  let yaw = 0.22;
+  let pitch = 0.72;
+  let dist = mobile ? 14 : 12.5;
+  let tx = (0.46 - 0.5) * MAP_W;
+  let tz = (0.58 - 0.5) * MAP_D;
   let vYaw = 0;
   let vPitch = 0;
   let vDist = 0;
@@ -381,7 +593,7 @@ export async function mountMapScene(
     const elev = pitch;
     camera.position.set(
       tx + Math.cos(elev) * Math.sin(yaw) * dist,
-      lift(sampleHeight(tx / MAP_W + 0.5, tz / MAP_D + 0.5)) + Math.sin(elev) * dist,
+      Math.max(0, lift(sampleTerrain(tx / MAP_W + 0.5, tz / MAP_D + 0.5))) + Math.sin(elev) * dist,
       tz + Math.cos(elev) * Math.cos(yaw) * dist,
     );
     camera.lookAt(tx, 0.2, tz);
@@ -459,7 +671,7 @@ export async function mountMapScene(
     overlayCtx.textAlign = 'center';
     overlayCtx.fillText('С', 0, -26);
     overlayCtx.restore();
-    const verst = MAP_MANIFEST.widthVersts / MAP_W;
+    const verst = MAP_MANIFEST.widthSpan / MAP_W;
     const pxPerUnit = (w / (canvas.clientWidth || w)) * (canvas.clientWidth / (2 * Math.tan((camera.fov * Math.PI) / 360) * dist));
     const barUnits = 5 / verst;
     const bar = Math.max(40, Math.min(160, barUnits * pxPerUnit * 0.15));
@@ -472,7 +684,7 @@ export async function mountMapScene(
     overlayCtx.fillStyle = '#e7e1d2';
     overlayCtx.font = '13px "EB Garamond", serif';
     overlayCtx.textAlign = 'left';
-    overlayCtx.fillText('5 вёрст', 28, h - 36);
+    overlayCtx.fillText(`5 ${MAP_MANIFEST.spanUnit}`, 28, h - 36);
   }
 
   const pointers = new Map<number, { x: number; y: number }>();
@@ -576,6 +788,7 @@ export async function mountMapScene(
     raf = requestAnimationFrame(loop);
     const t = performance.now() / 1000;
     (water.material as THREE.ShaderMaterial).uniforms.uTime!.value = t;
+    inlandMat.uniforms.uTime!.value = t;
     fogMat.uniforms.uTime!.value = t;
     if (northAnim !== null) {
       yaw += (northAnim - yaw) * 0.12;
@@ -707,8 +920,10 @@ export async function mountMapScene(
       canvas.removeEventListener('wheel', onWheel);
       renderer.dispose();
       geo.dispose();
+      inlandGeo.dispose();
       albedoTex.dispose();
       waterTex.dispose();
+      heightTex.dispose();
       fogTex.dispose();
     },
   };

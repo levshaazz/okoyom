@@ -1,5 +1,8 @@
 import { MAP_MANIFEST } from '../data/map-manifest';
 
+/** Уровень моря процедурного запасного берега, в долях 0…1. Нарисованный край живёт в метрах. */
+export const PROCEDURAL_SEA = 0.36;
+
 /** Детерминированный шум. Одинаковые координаты дают одну и ту же высоту. */
 function hash2(ix: number, iy: number): number {
   let n = Math.imul(ix, 374761393) + Math.imul(iy, 668265263);
@@ -84,7 +87,7 @@ function mountain(nx: number, ny: number): number {
   return h;
 }
 
-/** Высота 0…1. Ниже seaLevel — море. */
+/** Высота 0…1 процедурного запасного берега. Ниже PROCEDURAL_SEA — море. */
 export function sampleHeight(nx: number, ny: number): number {
   const coast = coastX(ny);
   const inland = Math.max(0, nx - coast);
@@ -96,7 +99,7 @@ export function sampleHeight(nx: number, ny: number): number {
   const rd = riverDistance(nx, ny);
   if (inland > 0.012 && rd < 0.05) {
     const carve = Math.pow(1 - rd / 0.05, 1.6);
-    const bed = MAP_MANIFEST.seaLevel - 0.015 + (1 - carve) * 0.05;
+    const bed = PROCEDURAL_SEA - 0.015 + (1 - carve) * 0.05;
     h = h * (1 - carve) + Math.min(h, bed) * carve;
   }
   if (nx < coast) {
@@ -168,6 +171,93 @@ export function sampleColor(nx: number, ny: number): Rgb {
   if (h > 0.78) land = mix(land, SNOW, Math.min(1, (h - 0.78) / 0.12));
   const shade = 0.9 + grain * 0.16;
   return { r: land.r * shade, g: land.g * shade, b: land.b * shade };
+}
+
+/** Процедурную высоту переносит в шкалу манифеста: PROCEDURAL_SEA становится уровнем моря. */
+export function proceduralNormalized(nx: number, ny: number): number {
+  const h = sampleHeight(nx, ny);
+  const span = MAP_MANIFEST.heightMaxM - MAP_MANIFEST.heightMinM || 1;
+  const seaN = (MAP_MANIFEST.seaLevelM - MAP_MANIFEST.heightMinM) / span;
+  if (h >= PROCEDURAL_SEA) return seaN + ((h - PROCEDURAL_SEA) / (1 - PROCEDURAL_SEA)) * (1 - seaN);
+  return (h / PROCEDURAL_SEA) * seaN;
+}
+
+export function normalizedToMeters(height01: number): number {
+  return MAP_MANIFEST.heightMinM + height01 * (MAP_MANIFEST.heightMaxM - MAP_MANIFEST.heightMinM);
+}
+
+/** Мировые единицы вверх от уровня моря. `mapWidth` — ширина края в тех же единицах, что и сетка. */
+export function liftMeters(meters: number, mapWidth: number): number {
+  const spanM = MAP_MANIFEST.widthSpan * MAP_MANIFEST.metersPerSpan;
+  const metersPerWorld = spanM / mapWidth;
+  return ((meters - MAP_MANIFEST.seaLevelM) / metersPerWorld) * MAP_MANIFEST.verticalExaggeration;
+}
+
+/** Вода, если так говорит маска или если точка ниже уровня моря. Маска пляжа дырявая. */
+export function countsAsWater(mask: number, meters: number): boolean {
+  return mask >= 0.5 || meters < MAP_MANIFEST.seaLevelM;
+}
+
+/**
+ * Сжимает uint16-карту высот до сетки.
+ * `min` оставляет самый низкий отсчёт в окне, чтобы мелководье не растворилось в среднем.
+ */
+export function resampleU16(
+  data: Uint16Array,
+  sw: number,
+  sh: number,
+  dw: number,
+  dh: number,
+  mode: 'avg' | 'min',
+  radius: number,
+): Uint16Array {
+  const out = new Uint16Array(dw * dh);
+  const rad = Math.max(0, radius);
+  for (let y = 0; y < dh; y++) {
+    const cy = Math.min(sh - 1, Math.max(0, Math.round((y / Math.max(1, dh - 1)) * (sh - 1))));
+    for (let x = 0; x < dw; x++) {
+      const cx = Math.min(sw - 1, Math.max(0, Math.round((x / Math.max(1, dw - 1)) * (sw - 1))));
+      let acc = mode === 'min' ? 65535 : 0;
+      let n = 0;
+      for (let oy = -rad; oy <= rad; oy++) {
+        const sy = Math.min(sh - 1, Math.max(0, cy + oy));
+        const row = sy * sw;
+        for (let ox = -rad; ox <= rad; ox++) {
+          const sx = Math.min(sw - 1, Math.max(0, cx + ox));
+          const v = data[row + sx] ?? 0;
+          if (mode === 'min') acc = v < acc ? v : acc;
+          else acc += v;
+          n++;
+        }
+      }
+      out[y * dw + x] = mode === 'min' ? acc : Math.round(acc / Math.max(1, n));
+    }
+  }
+  return out;
+}
+
+/** Лёгкое размытие сетки высот. Прямоугольная, не только квадратная. */
+export function blurRect(src: Float32Array, w: number, h: number, radius: number): Float32Array {
+  const pass = new Float32Array(src.length);
+  const out = new Float32Array(src.length);
+  const blur = (from: Float32Array, to: Float32Array, horizontal: boolean) => {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0;
+        let n = 0;
+        for (let k = -radius; k <= radius; k++) {
+          const sx = horizontal ? Math.min(w - 1, Math.max(0, x + k)) : x;
+          const sy = horizontal ? y : Math.min(h - 1, Math.max(0, y + k));
+          sum += from[sy * w + sx] ?? 0;
+          n++;
+        }
+        to[y * w + x] = sum / n;
+      }
+    }
+  };
+  blur(src, pass, true);
+  blur(pass, out, false);
+  return out;
 }
 
 /** Сетка высот (seg+1)², row-major, y с севера на юг. */

@@ -1,92 +1,98 @@
+import { MAP_MANIFEST, type CoastPlace } from './map-manifest';
 import type { MapCell, MapMarker, MapPin, MapReveal, MapRoute, MapTerrain, MapZone, World, WorldMap } from '../lib/types';
 
 const MAP_ID = 'test-map';
 
+function placeNamed(name: string): CoastPlace {
+  const found = MAP_MANIFEST.places.find((row) => row.name === name);
+  if (!found) throw new Error(name);
+  return found;
+}
+
 function terrainAt(cx: number, cy: number): MapTerrain {
-  if (cx <= 1) return 'sea';
-  if (cx === 2) return 'coast';
-  if (cy >= 5 && cx < 6) return 'marsh';
-  if (cx >= 7 && cy <= 3) return 'hills';
-  if (cy <= 1 && cx >= 3) return 'forest';
+  if (cx <= 1 && cy >= 3) return 'sea';
+  if (cx <= 2 && cy >= 4) return 'coast';
+  if (cy <= 2 && cx >= 7) return 'hills';
+  if (cy <= 2 && cx >= 3) return 'forest';
   return 'road';
 }
 
 /**
- * Учебная карта. «Медный курган» лежит в тумане.
- * «Лысый холм» открыт только Римте и до открытия самоназвания подписан по-русски.
- * «?» — место уже на открытой клетке, но имя ещё не названо.
+ * Учебные метки нарисованного Test Coast. Имена служебные, это не география кампании.
+ * «Pine Ridge» лежит в тумане. «Mill Lake» открыто только Римте, самоназвание ещё спрятано.
+ * «Lighthouse Point» уже на открытой клетке, но имя не названо — на карте знак вопроса.
  */
 export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
   World,
   'world_map' | 'map_cells' | 'map_reveals' | 'map_markers' | 'map_pins' | 'map_zones' | 'map_routes'
 > {
+  const harbor = placeNamed('Test Harbor');
+  const light = placeNamed('Lighthouse Point');
+  const lake = placeNamed('Mill Lake');
+  const bridge = placeNamed('Old Bridge');
+  const ridge = placeNamed('Pine Ridge');
+  const island = placeNamed('Seal Island');
+
   const world_map: WorldMap = {
     id: MAP_ID,
-    title: 'Учебный берег',
-    cols: 10,
-    rows: 7,
+    title: 'Тестовый берег',
+    cols: MAP_MANIFEST.cols,
+    rows: MAP_MANIFEST.rows,
     image_data: null,
   };
   const map_cells: MapCell[] = [];
-  for (let cy = 0; cy < 7; cy++) {
-    for (let cx = 0; cx < 10; cx++) {
+  for (let cy = 0; cy < MAP_MANIFEST.rows; cy++) {
+    for (let cx = 0; cx < MAP_MANIFEST.cols; cx++) {
       map_cells.push({ map_id: MAP_ID, cx, cy, terrain: terrainAt(cx, cy) });
     }
   }
-  const openAll: Array<[number, number]> = [
-    [2, 2],
-    [2, 3],
-    [2, 4],
-    [3, 2],
-    [3, 3],
-    [3, 4],
-    [4, 3],
-    [4, 4],
-    [5, 2],
-    [5, 3],
-  ];
-  const map_reveals: MapReveal[] = openAll.map(([cx, cy]) => ({
-    map_id: MAP_ID,
-    cx,
-    cy,
-    scope: 'all',
-    hero_id: null,
-  }));
+
+  const map_reveals: MapReveal[] = [];
+  for (let cy = 0; cy < MAP_MANIFEST.rows; cy++) {
+    for (let cx = 0; cx < MAP_MANIFEST.cols; cx++) {
+      const south = cy >= 3 && cx <= 6;
+      const fields = cy === 2 && cx >= 1 && cx <= 5;
+      const woods = cy <= 1 && cx >= 2 && cx <= 4;
+      if (south || fields || woods) {
+        map_reveals.push({ map_id: MAP_ID, cx, cy, scope: 'all', hero_id: null });
+      }
+    }
+  }
   map_reveals.push({ map_id: MAP_ID, cx: 6, cy: 2, scope: 'hero', hero_id: hero.rimte });
 
   const map_markers: MapMarker[] = [
     {
       id: 'm-harbor',
       map_id: MAP_ID,
-      x: 0.28,
-      y: 0.48,
+      x: harbor.x,
+      y: harbor.y,
       kind: 'city',
-      endonym: 'Нордхавн',
-      name_ru: 'Гавань',
+      endonym: harbor.name,
+      name_ru: 'Тестовая гавань',
       name_state: 'full',
       visibility: 'public',
       hero_ids: [],
-      wiki_slug: 'gavany',
-      blurb: 'Пробная гавань учебного берега: пирсы, склад и доска заказов. Это не география кампании.',
+      wiki_slug: null,
+      blurb: 'Служебная гавань тестового берега. Это не география кампании.',
       threat: '1–3',
-      loot: 'верёвка, мелкая рыба',
+      loot: '',
       visits: 'пробный выход',
-      hook: 'доска заказов у причала',
+      hook: '',
       rumor: false,
     },
     {
-      id: 'm-ford',
+      id: 'm-bridge',
       map_id: MAP_ID,
-      x: 0.46,
-      y: 0.58,
+      x: bridge.x,
+      y: bridge.y,
       kind: 'town',
-      endonym: 'Вади',
-      name_ru: 'Речной брод',
+      endonym: bridge.name,
+      name_ru: 'Старый мост',
       name_state: 'ru',
       visibility: 'public',
       hero_ids: [],
       wiki_slug: null,
-      blurb: 'Мелкий брод на пробной реке. Самоназвание ещё не открыто.',
+      blurb: 'Мост на тестовой реке. Самоназвание ещё не открыто.',
       threat: '1–3',
       loot: '',
       visits: '',
@@ -94,18 +100,18 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       rumor: false,
     },
     {
-      id: 'm-question',
+      id: 'm-light',
       map_id: MAP_ID,
-      x: 0.55,
-      y: 0.36,
+      x: light.x,
+      y: light.y,
       kind: 'wild',
-      endonym: 'Кальв',
-      name_ru: 'Лысый холм',
+      endonym: light.name,
+      name_ru: 'Маяк',
       name_state: 'unknown',
       visibility: 'public',
       hero_ids: [],
       wiki_slug: null,
-      blurb: 'Имя этого урочища ещё не названо. Пока на карте только знак вопроса.',
+      blurb: 'Имя этого места ещё не названо. Пока на карте только знак вопроса.',
       threat: '2–5',
       loot: '',
       visits: '',
@@ -113,18 +119,18 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       rumor: true,
     },
     {
-      id: 'm-hill',
+      id: 'm-lake',
       map_id: MAP_ID,
-      x: 0.66,
-      y: 0.32,
-      kind: 'camp',
-      endonym: 'Нордкальв',
-      name_ru: 'Северный холм',
+      x: lake.x,
+      y: lake.y,
+      kind: 'wild',
+      endonym: lake.name,
+      name_ru: 'Мельничное озеро',
       name_state: 'ru',
       visibility: 'heroes',
       hero_ids: [hero.rimte],
-      wiki_slug: 'holmy',
-      blurb: 'Холм открыт одному герою. Самоназвание пока спрятано.',
+      wiki_slug: null,
+      blurb: 'Озеро открыто одному герою. Самоназвание пока спрятано.',
       threat: '2–5',
       loot: '',
       visits: '',
@@ -132,19 +138,38 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       rumor: false,
     },
     {
-      id: 'm-barrow',
+      id: 'm-ridge',
       map_id: MAP_ID,
-      x: 0.84,
-      y: 0.68,
-      kind: 'ruin',
-      endonym: 'Медьюр',
-      name_ru: 'Медный курган',
+      x: ridge.x,
+      y: ridge.y,
+      kind: 'wild',
+      endonym: ridge.name,
+      name_ru: 'Сосновый хребет',
       name_state: 'full',
       visibility: 'public',
       hero_ids: [],
       wiki_slug: null,
-      blurb: 'Руины в тумане. Пока клетка закрыта, место не рисуется ходокам.',
+      blurb: 'Хребет в тумане. Пока клетка закрыта, место не рисуется ходокам.',
       threat: '6+',
+      loot: '',
+      visits: '',
+      hook: '',
+      rumor: false,
+    },
+    {
+      id: 'm-island',
+      map_id: MAP_ID,
+      x: island.x,
+      y: island.y,
+      kind: 'wild',
+      endonym: island.name,
+      name_ru: 'Остров тюленей',
+      name_state: 'full',
+      visibility: 'public',
+      hero_ids: [],
+      wiki_slug: null,
+      blurb: 'Малый остров у тестового берега.',
+      threat: '1–3',
       loot: '',
       visits: '',
       hook: '',
@@ -156,8 +181,8 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
     {
       id: 'pin-toivo',
       map_id: MAP_ID,
-      x: 0.4,
-      y: 0.5,
+      x: 0.44,
+      y: 0.66,
       hero_id: hero.toivo,
       label: 'Моя стоянка у склада',
       shared: false,
@@ -165,8 +190,8 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
     {
       id: 'pin-party',
       map_id: MAP_ID,
-      x: 0.33,
-      y: 0.42,
+      x: 0.5,
+      y: 0.6,
       hero_id: hero.rimte,
       label: 'Стоянка отряда',
       shared: true,
@@ -174,18 +199,18 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
   ];
 
   const map_zones: MapZone[] = [
-    { id: 'z-harbor', x: 0.32, y: 0.5, radius: 0.08, tone: 'low' },
-    { id: 'z-hill', x: 0.66, y: 0.32, radius: 0.06, tone: 'mid' },
-    { id: 'z-barrow', x: 0.84, y: 0.68, radius: 0.07, tone: 'high' },
+    { id: 'z-harbor', x: harbor.x, y: harbor.y, radius: 0.06, tone: 'low' },
+    { id: 'z-lake', x: lake.x, y: lake.y, radius: 0.05, tone: 'mid' },
+    { id: 'z-ridge', x: ridge.x, y: ridge.y, radius: 0.06, tone: 'high' },
   ];
 
   const map_routes: MapRoute[] = [
     {
       id: 'route-shore',
       points: [
-        { x: 0.28, y: 0.48 },
-        { x: 0.36, y: 0.5 },
-        { x: 0.46, y: 0.58 },
+        { x: light.x, y: light.y },
+        { x: harbor.x, y: harbor.y },
+        { x: bridge.x, y: bridge.y },
       ],
     },
   ];

@@ -19,6 +19,7 @@
     "@fontsource/eb-garamond": "^5.2.7",
     "@fontsource/marck-script": "^5.2.8",
     "astro": "^5.15.9",
+    "fast-png": "^6.2.0",
     "idb": "^8.0.3",
     "preact": "^10.27.2",
     "three": "^0.170.0",

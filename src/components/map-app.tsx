@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { isGm } from '../lib/domain';
 import { href } from '../lib/paths';
+import { MAP_MANIFEST } from '../data/map-manifest';
 import { sampleColor } from '../lib/map-height';
 import {
   FOG_SIZE,
@@ -458,7 +459,8 @@ function FlatMap({
   onMarker: (id: string) => void;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const view = useRef({ x: 0.15, y: 0.2, w: 0.55, h: 0.45 });
+  const photo = useRef<HTMLImageElement | null>(null);
+  const view = useRef({ x: 0, y: 0, w: 1, h: 1 });
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
@@ -468,23 +470,49 @@ function FlatMap({
       const rect = canvas.getBoundingClientRect();
       canvas.width = Math.floor(rect.width);
       canvas.height = Math.floor(rect.height);
-      const image = ctx.createImageData(canvas.width, canvas.height);
       const v = view.current;
-      for (let y = 0; y < canvas.height; y++) {
-        for (let x = 0; x < canvas.width; x++) {
-          const nx = v.x + (x / canvas.width) * v.w;
-          const ny = v.y + (y / canvas.height) * v.h;
-          const color = sampleColor(nx, ny);
-          const cell = cellOf(world.world_map, nx, ny);
-          const open = isRevealed(world, actor, cell.cx, cell.cy);
-          const i = (y * canvas.width + x) * 4;
-          image.data[i] = open ? color.r : 18;
-          image.data[i + 1] = open ? color.g : 16;
-          image.data[i + 2] = open ? color.b : 14;
-          image.data[i + 3] = 255;
+      const img = photo.current;
+      if (img && img.complete && img.naturalWidth) {
+        ctx.drawImage(
+          img,
+          v.x * img.naturalWidth,
+          v.y * img.naturalHeight,
+          v.w * img.naturalWidth,
+          v.h * img.naturalHeight,
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+      } else {
+        const image = ctx.createImageData(canvas.width, canvas.height);
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const nx = v.x + (x / canvas.width) * v.w;
+            const ny = v.y + (y / canvas.height) * v.h;
+            const color = sampleColor(nx, ny);
+            const i = (y * canvas.width + x) * 4;
+            image.data[i] = color.r;
+            image.data[i + 1] = color.g;
+            image.data[i + 2] = color.b;
+            image.data[i + 3] = 255;
+          }
+        }
+        ctx.putImageData(image, 0, 0);
+      }
+      const cols = world.world_map.cols;
+      const rows = world.world_map.rows;
+      ctx.fillStyle = 'rgba(12, 14, 16, 0.86)';
+      for (let cy = 0; cy < rows; cy++) {
+        for (let cx = 0; cx < cols; cx++) {
+          if (isRevealed(world, actor, cx, cy)) continue;
+          const x0 = ((cx / cols - v.x) / v.w) * canvas.width;
+          const y0 = ((cy / rows - v.y) / v.h) * canvas.height;
+          const x1 = (((cx + 1) / cols - v.x) / v.w) * canvas.width;
+          const y1 = (((cy + 1) / rows - v.y) / v.h) * canvas.height;
+          ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
         }
       }
-      ctx.putImageData(image, 0, 0);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f6efdc';
       ctx.font = '20px "Cormorant SC", serif';
@@ -495,6 +523,16 @@ function FlatMap({
         ctx.fillText(label.primary, sx, sy);
       }
     };
+    let dead = false;
+    if (MAP_MANIFEST.albedoUrl && !photo.current) {
+      const img = new Image();
+      img.onload = () => {
+        if (dead) return;
+        photo.current = img;
+        paint();
+      };
+      img.src = MAP_MANIFEST.albedoUrl;
+    }
     paint();
     let drag: { x: number; y: number } | null = null;
     const down = (event: PointerEvent) => {
@@ -520,6 +558,7 @@ function FlatMap({
     canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up);
     return () => {
+      dead = true;
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('pointermove', move);
       canvas.removeEventListener('pointerup', up);
