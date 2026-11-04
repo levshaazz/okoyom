@@ -534,6 +534,9 @@ function Card({
             {item.kind === 'spell_tome' && (
               <button type="button" class="btn pri" onClick={onLearn}>Прочесть и выучить</button>
             )}
+            {item.kind === 'book' && world.book_copies.some((row) => row.instance_id === inst.id) && (
+              <a class="btn pri" href={href(`/kniga/${world.book_copies.find((row) => row.instance_id === inst.id)!.id}`)}>Читать</a>
+            )}
             {wieldOf(item) && wieldOf(item) !== 'shield' && !occupies(item) && (
               <>
                 <button type="button" class="btn" onClick={() => onTake('left')}>Взять в левую</button>
