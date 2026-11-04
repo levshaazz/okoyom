@@ -1,0 +1,15 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Bench from '../../../components/bench';
+import { createSeedWorld } from '../../../data/seed';
+
+export function getStaticPaths() {
+  return createSeedWorld().heroes.map((hero) => ({ params: { slug: hero.slug } }));
+}
+
+const { slug } = Astro.params;
+---
+
+<Base title="Верстак · Окоём" page="hodoki">
+  <Bench client:load slug={slug!} />
+</Base>

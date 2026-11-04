@@ -22,6 +22,7 @@ import {
   withdrawTransfer,
 } from './domain';
 import type { LearnedSpell } from './combat';
+import { queueCraft, type CraftOrder } from './craft';
 import type { HandFill, HandSide } from './types';
 import type { Session, World } from './types';
 import { SEED_REVISION } from './types';
@@ -53,6 +54,7 @@ export interface DataStore {
   applyLoadout(heroId: string, loadoutId: string): Promise<void>;
   deleteLoadout(heroId: string, loadoutId: string): Promise<void>;
   learnSpellTome(instanceId: string): Promise<{ message: string; learned: LearnedSpell | null }>;
+  requestCraft(heroId: string, order: CraftOrder): Promise<void>;
   rollbackEvent(eventId: string): Promise<void>;
   confirmEvent(eventId: string): Promise<void>;
 }
@@ -259,6 +261,11 @@ export class CampaignStore implements DataStore {
   async saveNote(heroId: string, body: string): Promise<void> {
     await this.ready();
     await this.commit(saveNote(this.world, this.session, heroId, body, this.meta()));
+  }
+
+  async requestCraft(heroId: string, order: CraftOrder): Promise<void> {
+    await this.ready();
+    await this.commit(queueCraft(this.world, this.session, heroId, order, this.meta()));
   }
 }
 

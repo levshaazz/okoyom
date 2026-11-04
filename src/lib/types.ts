@@ -121,7 +121,7 @@ export interface SpellRow {
 
 export interface KnowledgeRow {
   hero_id: string;
-  kind: 'ingredient_prop' | 'recipe' | 'blueprint' | 'language';
+  kind: 'ingredient_prop' | 'recipe' | 'blueprint' | 'language' | 'charm' | 'barren' | 'boon';
   ref: string;
   detail: string;
 }
@@ -326,7 +326,7 @@ export interface World {
   audit_log: AuditEvent[];
 }
 
-export const SEED_REVISION = 2;
+export const SEED_REVISION = 3;
 
 export interface OpMeta {
   id: string;
