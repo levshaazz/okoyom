@@ -15,6 +15,7 @@ import { formatQ, pct } from '../lib/rational';
 import { SKILL_GROUPS } from '../lib/skills';
 import type { ChangeRequest, Hero, World } from '../lib/types';
 import { Bar, Decide, Notices, Pips, useNotice } from './bits';
+import { HandsPanel } from './hands';
 import { useCampaign } from './use-campaign';
 
 type Tab = 'list' | 'perks' | 'spells' | 'craft' | 'journal' | 'books' | 'notes' | 'gift' | 'money';
@@ -149,6 +150,7 @@ export default function HeroSheet({ slug }: { slug: string }) {
             </div>
             {!editable && <p class="xs dim">Чужой лист. Полосы правит сам герой — сразу, без очереди.</p>}
           </div>
+          <HandsPanel world={world} hero={hero} store={store} editable={editable} />
           {perkWait && (
             <div class="panel pend">
               <div class="small">

@@ -33,8 +33,8 @@ describe('груз Римте', () => {
     const rimte = world.heroes[0]!;
     expect(rimte.slug).toBe('rimte');
     expect(capacitySlots(rimte)).toBe(13);
-    expect(formatWeight(gearWeight(world, rimte.id))).toBe('11 2/15');
-    expect(formatQ(carryWeight(world, rimte))).toBe('11 7/15');
+    expect(formatWeight(gearWeight(world, rimte.id))).toBe('11⅘');
+    expect(formatQ(carryWeight(world, rimte))).toBe('12 2/15');
   });
 });
 
@@ -99,7 +99,7 @@ describe('сумка', () => {
   it('зелье сразу лечит и уменьшает стопку', () => {
     const world = createSeedWorld();
     const potion = 'b1000000-0000-4000-8000-000000000005';
-    const result = useItem(world, player, potion, meta.now);
+    const result = useItem(world, player, potion, meta);
     expect(result.message).toContain('+18');
     const hero = result.world.heroes.find((row) => row.id === HERO.rimte)!;
     expect(hero.health).toBe(130);

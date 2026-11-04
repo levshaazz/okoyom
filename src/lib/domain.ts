@@ -1,3 +1,5 @@
+import { writeAudit } from './audit';
+import { DomainError } from './errors';
 import { addQ, mulQ, q, type Q } from './rational';
 import { isSkillName, xpThreshold } from './skills';
 import type {
@@ -12,12 +14,7 @@ import type {
   World,
 } from './types';
 
-export class DomainError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'DomainError';
-  }
-}
+export { DomainError } from './errors';
 
 export function actorOf(session: { role: Actor['role']; heroId: string | null; preview: boolean }): Actor {
   return {
@@ -146,7 +143,7 @@ export function setStat(
   heroId: string,
   stat: 'health' | 'magic' | 'stamina',
   value: number,
-  now: string,
+  meta: OpMeta,
 ): World {
   requireOwner(actor, heroId);
   const next = structuredClone(world);
@@ -154,9 +151,19 @@ export function setStat(
   const max = stat === 'health' ? hero.health_max : stat === 'magic' ? hero.magic_max : hero.stamina_max;
   if (!Number.isFinite(value)) throw new DomainError('Нужно число.');
   const clamped = Math.max(0, Math.min(max, Math.round(value)));
+  const previous = hero[stat];
   const patch: Partial<Hero> =
     stat === 'health' ? { health: clamped } : stat === 'magic' ? { magic: clamped } : { stamina: clamped };
-  Object.assign(hero, touchHero(hero, now, patch));
+  Object.assign(hero, touchHero(hero, meta.now, patch));
+  const label = stat === 'health' ? 'Здоровье' : stat === 'magic' ? 'Магия' : 'Выносливость';
+  writeAudit(next, actor, meta, {
+    hero_id: heroId,
+    action: 'set_stat',
+    summary: `${label} ${previous} → ${clamped}`,
+    before: { [stat]: previous },
+    after: { [stat]: clamped },
+    undo: { kind: 'stat', stat, value: previous },
+  });
   return next;
 }
 
@@ -287,7 +294,29 @@ export function setEquipped(world: World, actor: Actor, instanceId: string, worn
   }
   inst.location = worn ? 'worn' : 'bag';
   inst.updated_at = now;
+  if (!worn) {
+    const hero = heroById(next, inst.owner_hero_id);
+    for (const side of ['left', 'right'] as const) {
+      const fill = hero.hands[side];
+      if (fill?.kind === 'item' && fill.instanceId === inst.id) hero.hands[side] = null;
+    }
+  }
+  writeAudit(next, actor, { id: `eq-${instanceId}-${now}`, opId: instanceId, now }, {
+    hero_id: inst.owner_hero_id,
+    action: 'equip',
+    summary: worn ? `Надето «${item.name}»` : `Снято «${item.name}»`,
+    before: { worn: !worn },
+    after: { worn, instanceId },
+    undo: null,
+  });
   return next;
+}
+
+function clearHandsHolding(hero: Hero, instanceId: string): void {
+  for (const side of ['left', 'right'] as const) {
+    const fill = hero.hands[side];
+    if (fill?.kind === 'item' && fill.instanceId === instanceId) hero.hands[side] = null;
+  }
 }
 
 function effectOf(item: Item): { stat: 'health' | 'magic' | 'stamina'; amount: number } | null {
@@ -300,7 +329,7 @@ function effectOf(item: Item): { stat: 'health' | 'magic' | 'stamina'; amount: n
   return { stat, amount };
 }
 
-export function useItem(world: World, actor: Actor, instanceId: string, now: string): { world: World; message: string } {
+export function useItem(world: World, actor: Actor, instanceId: string, meta: OpMeta): { world: World; message: string } {
   const next = structuredClone(world);
   const inst = next.item_instances.find((row) => row.id === instanceId);
   if (!inst) throw new DomainError('Вещи уже нет.');
@@ -310,15 +339,27 @@ export function useItem(world: World, actor: Actor, instanceId: string, now: str
   const effect = effectOf(item);
   if (!effect) throw new DomainError('Этим нельзя воспользоваться.');
   const hero = heroById(next, inst.owner_hero_id);
-  const max = hero[`${effect.stat}_max`];
+  const max = effect.stat === 'health' ? hero.health_max : effect.stat === 'magic' ? hero.magic_max : hero.stamina_max;
   const current = hero[effect.stat];
   const updated = Math.min(max, current + effect.amount);
-  Object.assign(hero, touchHero(hero, now, { [effect.stat]: updated }));
+  const patch: Partial<Hero> =
+    effect.stat === 'health' ? { health: updated } : effect.stat === 'magic' ? { magic: updated } : { stamina: updated };
+  Object.assign(hero, touchHero(hero, meta.now, patch));
+  const previousQty = inst.qty;
   inst.qty -= 1;
-  inst.updated_at = now;
+  inst.updated_at = meta.now;
   if (inst.qty <= 0) {
+    clearHandsHolding(hero, inst.id);
     next.item_instances = next.item_instances.filter((row) => row.id !== inst.id);
   }
+  writeAudit(next, actor, meta, {
+    hero_id: hero.id,
+    action: 'use_item',
+    summary: `Использовано «${item.name}»`,
+    before: { [effect.stat]: current, qty: previousQty },
+    after: { [effect.stat]: updated, instanceId, qty: previousQty - 1 },
+    undo: { kind: 'stat', stat: effect.stat, value: current },
+  });
   const statName = effect.stat === 'health' ? 'здоровья' : effect.stat === 'magic' ? 'магии' : 'выносливости';
   const gained = updated - current;
   return {
@@ -438,6 +479,14 @@ function applyApproved(world: World, request: ChangeRequest, now: string): void 
     if (!row) throw new DomainError('Навык не записан на листе.');
     if (row.marks >= 3) throw new DomainError('Отметок уже три — принять нельзя.');
     row.marks += 1;
+    writeAudit(world, { role: 'gm', heroId: null, preview: false }, { id: `mark-${request.id}`, opId: request.id, now }, {
+      hero_id: request.hero_id,
+      action: 'skill_mark',
+      summary: `Принята отметка «${skill}»`,
+      before: { marks: row.marks - 1 },
+      after: { marks: row.marks, skill },
+      undo: { kind: 'skill_mark', skill },
+    });
     return;
   }
   if (request.kind === 'perk') {
@@ -608,13 +657,28 @@ export function grantItem(
       !row.secret &&
       !row.custom_name,
   );
-  const stackable = bagTwin && item.kind !== 'weapon' && item.kind !== 'armor' && item.kind !== 'book';
+  const stackable =
+    bagTwin &&
+    item.kind !== 'weapon' &&
+    item.kind !== 'armor' &&
+    item.kind !== 'book' &&
+    item.kind !== 'spell_tome' &&
+    item.kind !== 'combat_scroll';
   if (stackable && bagTwin) {
     bagTwin.qty += qty;
     bagTwin.updated_at = meta.now;
   } else {
     next.item_instances.push(inst);
   }
+  const grantedId = stackable && bagTwin ? bagTwin.id : inst.id;
+  writeAudit(next, actor, { ...meta, id: `${meta.id}-audit` }, {
+    hero_id: heroId,
+    action: 'gm_grant',
+    summary: `Выдано «${item.name}» ×${qty}`,
+    before: null,
+    after: { instanceId: grantedId, granted: [grantedId], itemId },
+    undo: stackable ? null : { kind: 'grant', instanceId: grantedId },
+  });
   next.transfers.push({
     id: meta.opId,
     instance_id: stackable && bagTwin ? bagTwin.id : meta.id,
@@ -641,3 +705,18 @@ export function visibleInstances(world: World, actor: Actor, heroId: string): It
     return true;
   });
 }
+
+export {
+  applyLoadout,
+  castWarning,
+  deleteLoadout,
+  describeFill,
+  handHints,
+  inFight,
+  learnSpellTome,
+  saveLoadout,
+  setHand,
+  veilOf,
+  wieldOf,
+} from './combat';
+export { confirmEvent, rollbackEvent } from './revert';

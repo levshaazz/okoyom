@@ -5,7 +5,7 @@ import { gmPendingCount, pendingCountForHero } from '../lib/domain';
 import { href } from '../lib/paths';
 import { GUEST } from '../lib/store';
 import type { Session } from '../lib/types';
-import { IconBag, IconBook, IconGive, IconMap, IconNote, IconSheet, IconWait } from './icons';
+import { IconBag, IconBook, IconGive, IconMap, IconNote, IconSheet, IconWait, IconWatch } from './icons';
 import { useCampaign } from './use-campaign';
 
 interface Props {
@@ -24,6 +24,7 @@ const PLAYER_NAV = [
 
 const GM_NAV = [
   { id: 'master', href: '/master', label: 'Пульт' },
+  { id: 'dozor', href: '/master/dozor', label: 'Дозор' },
   { id: 'geroi', href: '/master/geroi', label: 'Герои' },
   { id: 'zapiski', href: '/master/zapiski', label: 'Записки' },
   { id: 'mir', href: '/master/mir', label: 'Мир: вики и карта' },
@@ -207,6 +208,10 @@ export default function Chrome({ page }: Props) {
             {pending > 0 && <b class="mb">{pending}</b>}
             <IconWait />
             Пульт
+          </a>
+          <a class={page === 'dozor' ? 'on' : ''} href={href('/master/dozor')}>
+            <IconWatch />
+            Дозор
           </a>
           <a class={page === 'geroi' ? 'on' : ''} href={href('/master/geroi')}>
             <IconSheet />

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { canEditHero, capacitySlots, carryWeight, isGm, itemOf, priceLabel, visibleInstances } from '../lib/domain';
+import { canEditHero, capacitySlots, carryWeight, isGm, itemOf, priceLabel, veilOf, visibleInstances, wieldOf } from '../lib/domain';
 import { href } from '../lib/paths';
 import { formatQ, formatWeight, mulQ } from '../lib/rational';
 import type { ChangeRequest, Item, ItemInstance, ItemKind, World } from '../lib/types';
 import { Cells, Decide, Notices, useNotice } from './bits';
+import { HandsPanel } from './hands';
+import type { LearnedSpell } from '../lib/combat';
 import { KindGlyph } from './icons';
 import { useCampaign } from './use-campaign';
 
@@ -18,7 +20,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: 'book', label: 'Книги' },
 ];
 
-const GROUP_ORDER = ['weapon', 'armor', 'potion', 'ingredient', 'soulgem', 'book', 'misc'] as const;
+const GROUP_ORDER = ['weapon', 'armor', 'scroll', 'potion', 'ingredient', 'soulgem', 'book', 'misc'] as const;
 
 const GROUP_LABEL: Record<string, string> = {
   weapon: 'Оружие',
@@ -27,14 +29,21 @@ const GROUP_LABEL: Record<string, string> = {
   ingredient: 'Ингредиенты',
   soulgem: 'Сосуды душ',
   book: 'Книги и записки',
+  scroll: 'Свитки',
   tool: 'Прочее',
   misc: 'Прочее',
 };
+
+function occupies(item: Item): boolean {
+  const wield = wieldOf(item);
+  return wield === 'two' || wield === 'bow' || wield === 'crossbow';
+}
 
 function groupOf(kind: ItemKind): string {
   if (kind === 'ammo') return 'weapon';
   if (kind === 'note') return 'book';
   if (kind === 'tool') return 'misc';
+  if (kind === 'spell_tome' || kind === 'combat_scroll') return 'scroll';
   return kind;
 }
 
@@ -55,6 +64,7 @@ export default function Inventory({ slug }: { slug: string }) {
   const [qty, setQty] = useState(1);
   const [target, setTarget] = useState('');
   const [wide, setWide] = useState(false);
+  const [learned, setLearned] = useState<LearnedSpell | null>(null);
   const notice = useNotice();
 
   useEffect(() => {
@@ -113,6 +123,7 @@ export default function Inventory({ slug }: { slug: string }) {
   return (
     <div class="page">
       <Notices error={notice.error} toast={notice.toast} />
+      <HandsPanel world={world} hero={hero} store={store} editable={editable} />
       <div class="tabs desk-only">
         <a href={href(`/hodoki/${hero.slug}`)}>Лист</a>
         <a href={href(`/hodoki/${hero.slug}`)}>Перки</a>
@@ -228,10 +239,35 @@ export default function Inventory({ slug }: { slug: string }) {
             onWithdrawTransfer={(id) => run(() => store.withdrawTransfer(id), 'Передачу отозвали')}
             onDecide={(id, accept, comment) => run(() => store.decideRequest(id, accept, comment), accept ? 'Принято' : 'Отклонено')}
             onDecideTransfer={(id, accept, comment) => run(() => store.decideTransfer(id, accept, comment), accept ? 'Передано' : 'Передача отклонена')}
+            onTake={(side) => selectedInst && run(() => store.setHand(hero.id, side, { kind: 'item', instanceId: selectedInst.id, grip: 'one' }), side === 'left' ? 'В левой руке' : 'В правой руке')}
+            onLearn={() => {
+              if (!selectedInst) return;
+              void (async () => {
+                try {
+                  const result = await store.learnSpellTome(selectedInst.id);
+                  if (result.learned) setLearned(result.learned);
+                  else notice.flash(result.message);
+                } catch (reason) {
+                  notice.fail(reason);
+                }
+              })();
+            }}
           />
         )}
       </div>
 
+      {learned && (
+        <div class="modal-back" onClick={(event) => { if (event.currentTarget === event.target) setLearned(null); }}>
+          <div class="modal-card learn-card" role="dialog" aria-labelledby="learned-title">
+            <p class="kicker">Свиток знания</p>
+            <h2 id="learned-title">Вы выучили</h2>
+            <p class="learn-name">{learned.spell}</p>
+            <p>{learned.school} · ступень {learned.tier}</p>
+            {learned.warning && <p class="gold">{learned.warning}</p>}
+            <button type="button" class="btn pri" onClick={() => setLearned(null)}>Закрыть</button>
+          </div>
+        </div>
+      )}
       {transferFor && (
         <div class="modal-back" onClick={(event) => { if (event.currentTarget === event.target) setTransferFor(null); }}>
           <div class="modal-card" role="dialog" aria-labelledby="transfer-title">
@@ -324,7 +360,9 @@ function BagRow({
   );
   const weight = formatWeight(mulQ(item.weight, inst.qty));
   const name = `${inst.custom_name ?? item.name}${inst.qty > 1 ? ` ×${inst.qty}` : ''}`;
-  const detail = String(item.props.damage ?? item.props.armor ?? item.props.subtype ?? '');
+  const detail = item.kind === 'spell_tome'
+    ? item.public_desc
+    : String(item.props.damage ?? item.props.armor ?? item.props.subtype ?? '');
   const drag = useRef({ x: 0, y: 0, moved: false });
   function pointerDown(event: PointerEvent) {
     drag.current = { x: event.clientX, y: event.clientY, moved: false };
@@ -409,6 +447,8 @@ function Card({
   onWithdrawTransfer,
   onDecide,
   onDecideTransfer,
+  onTake,
+  onLearn,
 }: {
   world: World;
   inst: ItemInstance | null;
@@ -425,6 +465,8 @@ function Card({
   onWithdrawTransfer: (id: string) => void;
   onDecide: (id: string, accept: boolean, comment: string) => void;
   onDecideTransfer: (id: string, accept: boolean, comment: string) => void;
+  onTake: (side: 'left' | 'right') => void;
+  onLearn: () => void;
 }) {
   if (craft && !inst) {
     return (
@@ -486,9 +528,25 @@ function Card({
             </tbody>
           </table>
         )}
+        {item.kind === 'spell_tome' && <p class="xs dim">{veilOf(item).hint}</p>}
         {editable && inst.location !== 'in_transfer' && !drop && (
           <div class="actions">
-            {(item.kind === 'weapon' || item.kind === 'armor') && (
+            {item.kind === 'spell_tome' && (
+              <button type="button" class="btn pri" onClick={onLearn}>Прочесть и выучить</button>
+            )}
+            {wieldOf(item) && wieldOf(item) !== 'shield' && !occupies(item) && (
+              <>
+                <button type="button" class="btn" onClick={() => onTake('left')}>Взять в левую</button>
+                <button type="button" class="btn" onClick={() => onTake('right')}>Взять в правую</button>
+              </>
+            )}
+            {wieldOf(item) === 'shield' && (
+              <button type="button" class="btn" onClick={() => onTake('left')}>Взять в левую</button>
+            )}
+            {occupies(item) && (
+              <button type="button" class="btn" onClick={() => onTake('right')}>В обе руки</button>
+            )}
+            {item.kind === 'armor' && !wieldOf(item) && (
               <button type="button" class="btn" onClick={() => onEquip(!worn)}>{worn ? 'Снять' : 'Надеть'}</button>
             )}
             {effect && <button type="button" class="btn pri" onClick={onUse}>Выпить</button>}

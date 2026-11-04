@@ -21,7 +21,8 @@ export default function GrantForm() {
     );
   }
   const hero = heroId || world.heroes[0]?.id || '';
-  const item = itemId || world.items[0]?.id || '';
+  const item = itemId || world.items.find((row) => row.kind === 'spell_tome')?.id || world.items[0]?.id || '';
+  const chosen = world.items.find((row) => row.id === item);
   return (
     <div class="page">
       <h1>Выдать</h1>
@@ -55,10 +56,17 @@ export default function GrantForm() {
           Предмет
           <select value={item} onChange={(event) => setItemId((event.currentTarget as HTMLSelectElement).value)}>
             {world.items.map((row) => (
-              <option key={row.id} value={row.id}>{row.name}</option>
+              <option key={row.id} value={row.id}>
+                {row.kind === 'spell_tome' ? `Свиток знания: ${String(row.props.spell)}` : row.name}
+              </option>
             ))}
           </select>
         </label>
+        {chosen?.kind === 'spell_tome' && (
+          <p class="small dim">
+            Игрок увидит только «{chosen.public_desc}». Название «{String(chosen.props.spell)}» откроется после «Прочесть и выучить».
+          </p>
+        )}
         <label>
           Количество
           <input type="number" min={1} max={99} value={qty} onInput={(event) => setQty(Number((event.currentTarget as HTMLInputElement).value))} />

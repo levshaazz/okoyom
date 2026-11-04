@@ -48,6 +48,7 @@ export default function GmConsole() {
           <div class="panel">
             <div class="ptitle">Быстро</div>
             <div class="stack">
+              <a class="btn pri" href={href('/master/dozor')}>Дозор</a>
               <a class="btn" href={href('/master/vydat')}>Выдать предмет</a>
               <span class="btn ghost" title="Появится с сервером">Записка — позже</span>
               <span class="btn ghost" title="Появится с сервером">Туман карты — позже</span>
