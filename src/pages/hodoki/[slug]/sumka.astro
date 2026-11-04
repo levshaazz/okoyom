@@ -1,0 +1,15 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Inventory from '../../../components/inventory';
+import { createSeedWorld } from '../../../data/seed';
+
+export function getStaticPaths() {
+  return createSeedWorld().heroes.map((hero) => ({ params: { slug: hero.slug } }));
+}
+
+const { slug } = Astro.params;
+---
+
+<Base title="Сумка · Окоём" page="sumka">
+  <Inventory client:load slug={slug!} />
+</Base>

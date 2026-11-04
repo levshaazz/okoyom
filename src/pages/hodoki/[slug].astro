@@ -1,0 +1,15 @@
+---
+import Base from '../../layouts/Base.astro';
+import HeroSheet from '../../components/hero-sheet';
+import { createSeedWorld } from '../../data/seed';
+
+export function getStaticPaths() {
+  return createSeedWorld().heroes.map((hero) => ({ params: { slug: hero.slug } }));
+}
+
+const { slug } = Astro.params;
+---
+
+<Base title="Лист героя · Окоём" page="list">
+  <HeroSheet client:load slug={slug!} />
+</Base>

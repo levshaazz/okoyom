@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import { href } from '../lib/paths';
+---
+
+<Base title="Нет такой страницы · Окоём" page="home">
+  <div class="page stub">
+    <h1>Пусто</h1>
+    <p>Такой страницы нет.</p>
+    <p><a class="gold" href={href('/')}>На главную</a></p>
+  </div>
+</Base>
