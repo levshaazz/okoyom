@@ -285,8 +285,8 @@ export async function mountMapScene(
       void main(){
         vUv = uv;
         vec3 p = position;
-        float n = sin(p.x * 0.55 + uTime * 0.35) * cos(p.y * 0.45 - uTime * 0.22);
-        p.z += n * 0.35;
+        float n = sin(p.x * 0.45 + uTime * 0.35) * cos(p.z * 0.4 - uTime * 0.22);
+        p.y += 0.18 + n * 0.12;
         vH = n;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
@@ -307,14 +307,9 @@ export async function mountMapScene(
         gl_FragColor = vec4(col, alpha);
       }`,
   });
-  const fogGroup = new THREE.Group();
-  for (let i = 0; i < 3; i++) {
-    const sheet = new THREE.Mesh(new THREE.PlaneGeometry(MAP_W * 1.08, MAP_D * 1.08, 24, 16), fogMat);
-    sheet.rotation.x = -Math.PI / 2;
-    sheet.position.y = 0.55 + i * 0.38;
-    fogGroup.add(sheet);
-  }
-  scene.add(fogGroup);
+  const fogShell = new THREE.Mesh(geo, fogMat);
+  fogShell.frustumCulled = false;
+  scene.add(fogShell);
 
   const zoneGroup = new THREE.Group();
   const routeGroup = new THREE.Group();
@@ -372,7 +367,7 @@ export async function mountMapScene(
   }
 
   function applyCamera() {
-    pitch = Math.max(0.34, Math.min(1.28, pitch));
+    pitch = Math.max(0.42, Math.min(1.22, pitch));
     dist = Math.max(mobile ? 7 : 5.5, Math.min(34, dist));
     clampTarget();
     const elev = pitch;
@@ -514,7 +509,7 @@ export async function mountMapScene(
         lastAngle = ang;
       }
       lastDist = distNow;
-      pitch = Math.max(0.34, Math.min(1.28, pitch - dy * 0.002));
+      pitch = Math.max(0.42, Math.min(1.22, pitch - dy * 0.002));
       return;
     }
     if (mode === 'orbit') {
