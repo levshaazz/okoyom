@@ -1,6 +1,7 @@
 import { q } from '../lib/rational';
 import { SKILL_NAMES } from '../lib/skills';
 import { SEED_REVISION, type AuditEvent, type Hero, type Item, type ItemInstance, type SkillRow, type World } from '../lib/types';
+import { wikiSeed } from './wiki-seed';
 
 /** Stable ids so local saves and tests can point at the same rows. */
 export const HERO = {
@@ -746,6 +747,10 @@ const SEED: World = {
   ],
   notes: [],
   audit_log: [],
+  wiki_pages: [],
+  wiki_blocks: [],
+  wiki_grants: [],
+  wiki_margins: [],
   sessions: [
     {
       id: 's1000000-0000-4000-8000-000000000001',
@@ -829,5 +834,6 @@ function seedAudit(world: World): AuditEvent[] {
 export function createSeedWorld(): World {
   const world = structuredClone(SEED);
   world.audit_log = seedAudit(world);
+  Object.assign(world, wikiSeed(HERO));
   return world;
 }
