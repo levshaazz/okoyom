@@ -1,23 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
-import { CHRONICLE } from '../data/public';
+import ChronicleApp from '../components/chronicle-app';
 ---
 
 <Base title="Летопись · Окоём" page="letopis">
-  <div class="page">
-    <h1>Летопись</h1>
-    <p class="dim">Публичные записи. Закрытых глав здесь нет.</p>
-    {CHRONICLE.map((entry) => (
-      <article class="panel">
-        <div class="kicker xs">{entry.realDate} · {entry.gameDate}</div>
-        <h2>{entry.title}</h2>
-        <p>{entry.body}</p>
-        <div class="tag-row">
-          {entry.tags.map((tag) => (
-            <span class={tag.kind === 'ok' ? 'badge ok' : 'badge ru'}>{tag.text}</span>
-          ))}
-        </div>
-      </article>
-    ))}
-  </div>
+  <ChronicleApp client:load />
 </Base>

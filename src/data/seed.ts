@@ -1,3 +1,4 @@
+import { chronicleSeed } from './chronicle-seed';
 import { q } from '../lib/rational';
 import { SKILL_NAMES } from '../lib/skills';
 import { SEED_REVISION, type AuditEvent, type Hero, type Item, type ItemInstance, type SkillRow, type World } from '../lib/types';
@@ -746,6 +747,11 @@ const SEED: World = {
   ],
   notes: [],
   audit_log: [],
+  chronicle_entries: [],
+  chronicle_parts: [],
+  chronicle_memories: [],
+  world_clocks: [],
+  omens: [],
   sessions: [
     {
       id: 's1000000-0000-4000-8000-000000000001',
@@ -829,5 +835,6 @@ function seedAudit(world: World): AuditEvent[] {
 export function createSeedWorld(): World {
   const world = structuredClone(SEED);
   world.audit_log = seedAudit(world);
+  Object.assign(world, chronicleSeed(HERO));
   return world;
 }

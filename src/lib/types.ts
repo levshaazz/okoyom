@@ -305,6 +305,75 @@ export interface GameSession {
   table_heroes: string[];
 }
 
+/**
+ * public — гости и игроки. players — вошедшие ходоки. party — только участники записи.
+ *
+ * TODO(supabase): RLS на chronicle_entries и частях. Гость читает только public.
+ * Часть «только участникам» не должна приходить остальным. private.world_clocks
+ * игроку не отдаются вовсе: он видит omens, не filled/notes.
+ * Локальный IndexedDB хранит мир целиком — фильтр в src/lib/chronicle.ts, это не защита.
+ */
+export type ChronicleVisibility = 'public' | 'players' | 'party';
+
+export interface ChroniclePlace {
+  label: string;
+  wiki_slug: string | null;
+  map_label: string | null;
+}
+
+export interface ChronicleFallen {
+  name: string;
+  hero_id: string | null;
+  note: string;
+}
+
+export interface ChronicleEntry {
+  id: string;
+  real_date: string;
+  game_date: string;
+  title: string;
+  lead_md: string;
+  hero_ids: string[];
+  places: ChroniclePlace[];
+  loot: string;
+  fallen: ChronicleFallen[];
+  visibility: ChronicleVisibility;
+  session_id: string | null;
+}
+
+export interface ChroniclePart {
+  id: string;
+  entry_id: string;
+  ord: number;
+  body_md: string;
+  visibility: ChronicleVisibility;
+}
+
+export interface ChronicleMemory {
+  id: string;
+  entry_id: string;
+  hero_id: string;
+  body: string;
+  created_at: string;
+}
+
+/** Часы мира. Игрокам не показывать: ни filled, ни notes. */
+export interface WorldClock {
+  id: string;
+  title: string;
+  segments: number;
+  filled: number;
+  notes: string;
+}
+
+export interface Omen {
+  id: string;
+  clock_id: string;
+  text: string;
+  shown_from: string;
+  visibility: 'public' | 'players';
+}
+
 export interface World {
   revision: number;
   members: Member[];
@@ -324,9 +393,14 @@ export interface World {
   notes: Note[];
   sessions: GameSession[];
   audit_log: AuditEvent[];
+  chronicle_entries: ChronicleEntry[];
+  chronicle_parts: ChroniclePart[];
+  chronicle_memories: ChronicleMemory[];
+  world_clocks: WorldClock[];
+  omens: Omen[];
 }
 
-export const SEED_REVISION = 2;
+export const SEED_REVISION = 3;
 
 export interface OpMeta {
   id: string;
