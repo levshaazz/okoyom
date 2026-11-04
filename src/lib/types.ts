@@ -70,6 +70,9 @@ export interface Hero {
   downtime_label: string;
   /** лист */
   reputation: { name: string; value: number }[];
+  /** Слоты рук. Броня на теле по-прежнему location worn и в руки не входит. */
+  hands: Hands;
+  loadouts: Loadout[];
   created_at: string;
   updated_at: string;
 }
@@ -112,6 +115,8 @@ export interface SpellRow {
   spell: string;
   school: string;
   cost: number;
+  /** 1 ученик … 5 мастер. Порог навыка: 0 / 25 / 50 / 75 / 100. */
+  tier: number;
 }
 
 export interface KnowledgeRow {
@@ -131,7 +136,33 @@ export type ItemKind =
   | 'note'
   | 'soulgem'
   | 'tool'
-  | 'misc';
+  | 'misc'
+  /** Свиток знания: название заклинания в props.spell, игроку его не показывают. */
+  | 'spell_tome'
+  /** Одноразовый боевой свиток, его берут в руку. */
+  | 'combat_scroll';
+
+/** Как вещь садится в руку. Лук, арбалет и двуручное занимают обе. */
+export type Wield = 'one' | 'two' | 'bow' | 'crossbow' | 'staff' | 'shield' | 'torch' | 'combat_scroll';
+
+export type HandSide = 'left' | 'right';
+
+export type HandFill =
+  | null
+  | { kind: 'item'; instanceId: string; grip: 'one' | 'both' }
+  | { kind: 'spell'; spell: string };
+
+export interface Hands {
+  left: HandFill;
+  right: HandFill;
+}
+
+/** До четырёх наборов, как избранное в Скайриме. */
+export interface Loadout {
+  id: string;
+  name: string;
+  hands: Hands;
+}
 
 export interface ItemEffect {
   stat: 'health' | 'magic' | 'stamina';
@@ -240,6 +271,31 @@ export interface Note {
   created_at: string;
 }
 
+export type AuditSource = 'player' | 'gm' | 'system';
+
+/**
+ * Журнал аудита. Каждая правка листа — событие.
+ * TODO(supabase): настоящий audit_log пишет триггер; здесь тот же смысл в локальном мире.
+ */
+export interface AuditEvent {
+  id: string;
+  at: string;
+  hero_id: string;
+  actor_label: string;
+  source: AuditSource;
+  action: string;
+  summary: string;
+  before: unknown;
+  after: unknown;
+  /** Как вернуть лист. null — откат не предложен. */
+  undo: unknown;
+  reverted_by: string | null;
+  /** id события, которое мастер подтвердил. */
+  confirms: string | null;
+  session_id: string | null;
+  backdated: boolean;
+}
+
 export interface GameSession {
   id: string;
   starts_at: string;
@@ -267,9 +323,10 @@ export interface World {
   quests: Quest[];
   notes: Note[];
   sessions: GameSession[];
+  audit_log: AuditEvent[];
 }
 
-export const SEED_REVISION = 1;
+export const SEED_REVISION = 2;
 
 export interface OpMeta {
   id: string;

@@ -1,19 +1,28 @@
 import { createSeedWorld } from '../data/seed';
 import {
+  applyLoadout,
+  confirmEvent,
   decideRequest,
   decideTransfer,
+  deleteLoadout,
   grantItem,
+  learnSpellTome,
   queueDrop,
   queuePerk,
   queueSkillMark,
   queueTransfer,
+  rollbackEvent,
+  saveLoadout,
   saveNote,
   setEquipped,
+  setHand,
   setStat,
   useItem,
   withdrawRequest,
   withdrawTransfer,
 } from './domain';
+import type { LearnedSpell } from './combat';
+import type { HandFill, HandSide } from './types';
 import type { Session, World } from './types';
 import { SEED_REVISION } from './types';
 
@@ -39,6 +48,13 @@ export interface DataStore {
   useItem(instanceId: string): Promise<string>;
   grantItem(heroId: string, itemId: string, qty: number): Promise<void>;
   saveNote(heroId: string, body: string): Promise<void>;
+  setHand(heroId: string, side: HandSide, fill: HandFill): Promise<void>;
+  saveLoadout(heroId: string, name: string): Promise<void>;
+  applyLoadout(heroId: string, loadoutId: string): Promise<void>;
+  deleteLoadout(heroId: string, loadoutId: string): Promise<void>;
+  learnSpellTome(instanceId: string): Promise<{ message: string; learned: LearnedSpell | null }>;
+  rollbackEvent(eventId: string): Promise<void>;
+  confirmEvent(eventId: string): Promise<void>;
 }
 
 export interface StoreHooks {
@@ -188,14 +204,51 @@ export class CampaignStore implements DataStore {
 
   async setStat(heroId: string, stat: 'health' | 'magic' | 'stamina', value: number): Promise<void> {
     await this.ready();
-    await this.commit(setStat(this.world, this.session, heroId, stat, value, this.hooks.now()));
+    await this.commit(setStat(this.world, this.session, heroId, stat, value, this.meta()));
   }
 
   async useItem(instanceId: string): Promise<string> {
     await this.ready();
-    const result = useItem(this.world, this.session, instanceId, this.hooks.now());
+    const result = useItem(this.world, this.session, instanceId, this.meta());
     await this.commit(result.world);
     return result.message;
+  }
+
+  async setHand(heroId: string, side: HandSide, fill: HandFill): Promise<void> {
+    await this.ready();
+    await this.commit(setHand(this.world, this.session, heroId, side, fill, this.meta()));
+  }
+
+  async saveLoadout(heroId: string, name: string): Promise<void> {
+    await this.ready();
+    await this.commit(saveLoadout(this.world, this.session, heroId, name, this.meta()));
+  }
+
+  async applyLoadout(heroId: string, loadoutId: string): Promise<void> {
+    await this.ready();
+    await this.commit(applyLoadout(this.world, this.session, heroId, loadoutId, this.meta()));
+  }
+
+  async deleteLoadout(heroId: string, loadoutId: string): Promise<void> {
+    await this.ready();
+    await this.commit(deleteLoadout(this.world, this.session, heroId, loadoutId, this.meta()));
+  }
+
+  async learnSpellTome(instanceId: string): Promise<{ message: string; learned: LearnedSpell | null }> {
+    await this.ready();
+    const result = learnSpellTome(this.world, this.session, instanceId, this.meta());
+    if (result.changed) await this.commit(result.world);
+    return { message: result.message, learned: result.learned };
+  }
+
+  async rollbackEvent(eventId: string): Promise<void> {
+    await this.ready();
+    await this.commit(rollbackEvent(this.world, this.session, eventId, this.meta()));
+  }
+
+  async confirmEvent(eventId: string): Promise<void> {
+    await this.ready();
+    await this.commit(confirmEvent(this.world, this.session, eventId, this.meta()));
   }
 
   async grantItem(heroId: string, itemId: string, qty: number): Promise<void> {

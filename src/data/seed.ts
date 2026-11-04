@@ -1,6 +1,6 @@
 import { q } from '../lib/rational';
 import { SKILL_NAMES } from '../lib/skills';
-import { SEED_REVISION, type Hero, type Item, type ItemInstance, type SkillRow, type World } from '../lib/types';
+import { SEED_REVISION, type AuditEvent, type Hero, type Item, type ItemInstance, type SkillRow, type World } from '../lib/types';
 
 /** Stable ids so local saves and tests can point at the same rows. */
 export const HERO = {
@@ -60,6 +60,7 @@ const items: Item[] = [
       special: 'Леса: вытянуть цель на 2 клетки (проверка Выносливости)',
       enchant: 'нет · можно наложить (Зачарование 15)',
       origin: 'Дом Норейка, Причал · подарок тётки рода',
+      wield: 'bow',
     },
   },
   {
@@ -70,7 +71,7 @@ const items: Item[] = [
     price: 18,
     lot: 1,
     public_desc: 'Короткий тесак из обшивки. Держит зазубрину и соль.',
-    props: { damage: '2d6+3', subtype: 'одноручное · корабельное железо' },
+    props: { damage: '2d6+3', subtype: 'одноручное · корабельное железо', wield: 'one' },
   },
   {
     id: 'ammo-harpoon',
@@ -200,7 +201,7 @@ const items: Item[] = [
     price: 12,
     lot: 1,
     public_desc: 'Лёгкий посох. Им удобно проверять дно и опирать круг.',
-    props: { damage: '1d6', subtype: 'посох' },
+    props: { damage: '1d6', subtype: 'посох', wield: 'staff' },
   },
   {
     id: 'armor-robe',
@@ -250,7 +251,7 @@ const items: Item[] = [
     price: 20,
     lot: 1,
     public_desc: 'Степная сабля, без клейма.',
-    props: { damage: '1d8+1', subtype: 'одноручное' },
+    props: { damage: '1d8+1', subtype: 'одноручное', wield: 'one' },
   },
   {
     id: 'shield-leather',
@@ -260,7 +261,7 @@ const items: Item[] = [
     price: 15,
     lot: 1,
     public_desc: 'Круглый щит на кожаном каркасе.',
-    props: { armor: 'щит', subtype: 'щит' },
+    props: { armor: 'щит', subtype: 'щит', wield: 'shield' },
   },
   {
     id: 'armor-mail',
@@ -271,6 +272,66 @@ const items: Item[] = [
     lot: 1,
     public_desc: 'Короткая кольчуга. Тяжёлая, зато держит нож.',
     props: { armor: '5', subtype: 'тяжёлая броня' },
+  },
+  {
+    id: 'tome-ozone',
+    name: 'Свиток знания',
+    kind: 'spell_tome',
+    weight: q(1, 3),
+    price: 0,
+    lot: 1,
+    public_desc: 'Свиток, пахнущий озоном. Буквы покалывают пальцы.',
+    props: { spell: 'Искра', school: 'Разрушение', tier: 1, cost: 12, hint: 'Намёк школы: пахнет грозой, не солью.' },
+  },
+  {
+    id: 'tome-circle',
+    name: 'Свиток знания',
+    kind: 'spell_tome',
+    weight: q(1, 3),
+    price: 0,
+    lot: 1,
+    public_desc: 'Тяжёлый свиток. Чернила тёплые, будто под кожей.',
+    props: { spell: 'Круг жизни', school: 'Восстановление', tier: 4, cost: 40, hint: 'Намёк школы: от него теплеют старые шрамы.' },
+  },
+  {
+    id: 'tome-step',
+    name: 'Свиток знания',
+    kind: 'spell_tome',
+    weight: q(1, 3),
+    price: 0,
+    lot: 1,
+    public_desc: 'Узкая полоска кожи. По краю — след сапога.',
+    props: { spell: 'Лёгкий шаг', school: 'Изменение', tier: 1, cost: 15, hint: 'Намёк школы: пыль под ним не поднимается.' },
+  },
+  {
+    id: 'scroll-spark',
+    name: 'Боевой свиток искр',
+    kind: 'combat_scroll',
+    weight: q(1, 3),
+    price: 8,
+    lot: 1,
+    public_desc: 'Одноразовый. В руке вспыхивает и сгорает.',
+    props: { damage: '1d6', wield: 'combat_scroll', school: 'Разрушение' },
+  },
+  {
+    id: 'tool-torch',
+    name: 'Факел',
+    kind: 'tool',
+    weight: q(1),
+    price: 1,
+    lot: 1,
+    public_desc: 'Смола и пакля. В руке даёт свет и слабый огонь.',
+    props: { wield: 'torch' },
+  },
+  {
+    id: 'misc-chest',
+    name: 'Чужой сундук',
+    kind: 'misc',
+    weight: q(8),
+    price: 0,
+    lot: 1,
+    public_desc: 'Тяжёлый ящик без бирки. В журнале выдачи его нет — дозор это увидит.',
+    props: {},
   },
 ];
 
@@ -314,6 +375,20 @@ const rimte: Hero = {
     { name: 'Юратский цех', value: 2 },
     { name: 'Компания', value: -1 },
   ],
+  hands: {
+    left: { kind: 'item', instanceId: 'b1000000-0000-4000-8000-000000000001', grip: 'both' },
+    right: { kind: 'item', instanceId: 'b1000000-0000-4000-8000-000000000001', grip: 'both' },
+  },
+  loadouts: [
+    {
+      id: 'fav-rimte-bow',
+      name: 'Лук',
+      hands: {
+        left: { kind: 'item', instanceId: 'b1000000-0000-4000-8000-000000000001', grip: 'both' },
+        right: { kind: 'item', instanceId: 'b1000000-0000-4000-8000-000000000001', grip: 'both' },
+      },
+    },
+  ],
   created_at: T0,
   updated_at: T0,
 };
@@ -354,6 +429,11 @@ const toivo: Hero = {
   downtime: 2,
   downtime_label: 'неделя 2–8 Солевея',
   reputation: [{ name: 'Контора', value: 0 }],
+  hands: {
+    left: { kind: 'spell', spell: 'Лечение' },
+    right: { kind: 'item', instanceId: 'b2000000-0000-4000-8000-000000000001', grip: 'one' },
+  },
+  loadouts: [],
   created_at: T0,
   updated_at: T0,
 };
@@ -369,7 +449,7 @@ const zhdan: Hero = {
   level: 2,
   xp: 2,
   xp_next: 12,
-  health: 80,
+  health: 120,
   magic: 100,
   stamina: 100,
   health_max: 110,
@@ -394,6 +474,11 @@ const zhdan: Hero = {
   downtime: 3,
   downtime_label: 'неделя 2–8 Солевея',
   reputation: [{ name: 'Контора', value: 1 }],
+  hands: {
+    left: { kind: 'item', instanceId: 'b3000000-0000-4000-8000-000000000002', grip: 'one' },
+    right: { kind: 'item', instanceId: 'b3000000-0000-4000-8000-000000000001', grip: 'one' },
+  },
+  loadouts: [],
   created_at: T0,
   updated_at: T0,
 };
@@ -466,7 +551,7 @@ const SEED: World = {
       Одноручное: { value: 18 },
     }),
     ...skills(HERO.zhdan, {
-      Одноручное: { value: 40, marks: 2 },
+      Одноручное: { value: 40, marks: 4 },
       'Тяжёлая броня': { value: 32, marks: 1 },
       Блок: { value: 28 },
       Стрельба: { value: 18 },
@@ -484,8 +569,8 @@ const SEED: World = {
     { hero_id: HERO.zhdan, perk: 'Бычий загривок', skill: 'Тяжёлая броня', taken_at: T0 },
   ],
   spells: [
-    { hero_id: HERO.toivo, spell: 'Лечение', school: 'Восстановление', cost: 20 },
-    { hero_id: HERO.toivo, spell: 'Свет', school: 'Изменение', cost: 10 },
+    { hero_id: HERO.toivo, spell: 'Лечение', school: 'Восстановление', cost: 20, tier: 1 },
+    { hero_id: HERO.toivo, spell: 'Свет', school: 'Изменение', cost: 10, tier: 1 },
   ],
   knowledge: [
     {
@@ -498,7 +583,7 @@ const SEED: World = {
   items,
   item_instances: [
     inst('b1000000-0000-4000-8000-000000000001', 'bow-harpoon', HERO.rimte, 1, 'worn'),
-    inst('b1000000-0000-4000-8000-000000000002', 'sword-shipiron', HERO.rimte, 1, 'worn'),
+    inst('b1000000-0000-4000-8000-000000000002', 'sword-shipiron', HERO.rimte, 1, 'bag'),
     inst('b1000000-0000-4000-8000-000000000003', 'ammo-harpoon', HERO.rimte, 20, 'bag'),
     inst('b1000000-0000-4000-8000-000000000004', 'armor-hunter', HERO.rimte, 1, 'worn'),
     inst('b1000000-0000-4000-8000-000000000005', 'potion-health-small', HERO.rimte, 2, 'bag'),
@@ -511,16 +596,22 @@ const SEED: World = {
     inst('b1000000-0000-4000-8000-00000000000c', 'tool-lockpick', HERO.rimte, 5, 'bag'),
     inst('b1000000-0000-4000-8000-00000000000d', 'tool-rope', HERO.rimte, 1, 'bag'),
     inst('b1000000-0000-4000-8000-00000000000e', 'tool-lantern', HERO.rimte, 1, 'bag'),
+    inst('b1000000-0000-4000-8000-00000000000f', 'tome-ozone', HERO.rimte, 1, 'bag'),
+    inst('b1000000-0000-4000-8000-000000000010', 'scroll-spark', HERO.rimte, 1, 'bag'),
     inst('b2000000-0000-4000-8000-000000000001', 'staff-reed', HERO.toivo, 1, 'worn'),
     inst('b2000000-0000-4000-8000-000000000002', 'armor-robe', HERO.toivo, 1, 'worn'),
     inst('b2000000-0000-4000-8000-000000000003', 'potion-magic-medium', HERO.toivo, 1, 'bag'),
     inst('b2000000-0000-4000-8000-000000000004', 'tool-bandages', HERO.toivo, 1, 'bag'),
     inst('b2000000-0000-4000-8000-000000000005', 'book-salt', HERO.toivo, 1, 'bag'),
+    inst('b2000000-0000-4000-8000-000000000006', 'tome-circle', HERO.toivo, 1, 'bag'),
+    inst('b2000000-0000-4000-8000-000000000007', 'tool-torch', HERO.toivo, 1, 'bag'),
     inst('b3000000-0000-4000-8000-000000000001', 'sword-saber', HERO.zhdan, 1, 'worn'),
     inst('b3000000-0000-4000-8000-000000000002', 'shield-leather', HERO.zhdan, 1, 'worn'),
     inst('b3000000-0000-4000-8000-000000000003', 'armor-mail', HERO.zhdan, 1, 'worn'),
     inst('b3000000-0000-4000-8000-000000000004', 'potion-health-small', HERO.zhdan, 1, 'bag'),
     inst('b3000000-0000-4000-8000-000000000005', 'tool-rope', HERO.zhdan, 1, 'bag'),
+    inst('b3000000-0000-4000-8000-000000000006', 'tome-step', HERO.zhdan, 1, 'bag'),
+    inst('b3000000-0000-4000-8000-000000000007', 'misc-chest', HERO.zhdan, 1, 'bag'),
   ],
   transfers: [],
   change_requests: [
@@ -654,6 +745,7 @@ const SEED: World = {
     },
   ],
   notes: [],
+  audit_log: [],
   sessions: [
     {
       id: 's1000000-0000-4000-8000-000000000001',
@@ -663,9 +755,79 @@ const SEED: World = {
       status: 'planned',
       table_heroes: [HERO.rimte, HERO.toivo],
     },
+    {
+      id: 's2000000-0000-4000-8000-000000000002',
+      starts_at: '2026-11-04T15:00:00.000Z',
+      game_date: '12 Солевея 40 П',
+      title: 'Дозор у Причала',
+      status: 'live',
+      table_heroes: [HERO.zhdan],
+    },
   ],
 };
 
+const ORPHAN = 'b3000000-0000-4000-8000-000000000007';
+
+function seedAudit(world: World): AuditEvent[] {
+  const events: AuditEvent[] = world.heroes.map((hero) => {
+    const instances = world.item_instances
+      .filter((row) => row.owner_hero_id === hero.id && row.id !== ORPHAN)
+      .map((row) => row.id);
+    const health = hero.id === HERO.zhdan ? 80 : hero.health;
+    return {
+      id: `seed-${hero.slug}`,
+      at: T0,
+      hero_id: hero.id,
+      actor_label: 'система',
+      source: 'system' as const,
+      action: 'seed',
+      summary: 'Лист открыт',
+      before: null,
+      after: { health, magic: hero.magic, stamina: hero.stamina, instances },
+      undo: null,
+      reverted_by: null,
+      confirms: null,
+      session_id: null,
+      backdated: false,
+    };
+  });
+  events.push({
+    id: 'zhdan-session-edit',
+    at: '2026-11-04T09:00:00.000Z',
+    hero_id: HERO.zhdan,
+    actor_label: 'игрок',
+    source: 'player',
+    action: 'set_stat',
+    summary: 'Здоровье 80 → 90',
+    before: { health: 80 },
+    after: { health: 90 },
+    undo: { kind: 'stat', stat: 'health', value: 80 },
+    reverted_by: null,
+    confirms: null,
+    session_id: 's2000000-0000-4000-8000-000000000002',
+    backdated: false,
+  });
+  events.push({
+    id: 'toivo-backdated',
+    at: '2026-10-01T08:00:00.000Z',
+    hero_id: HERO.toivo,
+    actor_label: 'игрок',
+    source: 'player',
+    action: 'note',
+    summary: 'Заметка, записанная задним числом',
+    before: null,
+    after: { note: true },
+    undo: null,
+    reverted_by: null,
+    confirms: null,
+    session_id: null,
+    backdated: true,
+  });
+  return events;
+}
+
 export function createSeedWorld(): World {
-  return structuredClone(SEED);
+  const world = structuredClone(SEED);
+  world.audit_log = seedAudit(world);
+  return world;
 }
