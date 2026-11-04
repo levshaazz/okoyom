@@ -305,6 +305,66 @@ export interface GameSession {
   table_heroes: string[];
 }
 
+export type MapTerrain = 'sea' | 'coast' | 'marsh' | 'forest' | 'hills' | 'road';
+export type MapMarkerKind = 'city' | 'town' | 'ruin' | 'cave' | 'camp' | 'wild';
+/** public — все, players — ходоки, heroes — перечисленные, gm — только мастер. */
+export type MapMarkerVisibility = 'public' | 'players' | 'heroes' | 'gm';
+/** unknown — на карте «?», ru — только русское имя, full — самоназвание и перевод. */
+export type MapNameState = 'unknown' | 'ru' | 'full';
+
+export interface WorldMap {
+  id: string;
+  title: string;
+  cols: number;
+  rows: number;
+  /**
+   * Сменная подложка. null — тестовый рисунок по клеткам.
+   * TODO(supabase): настоящая карта не лежит файлом в репозитории.
+   * Клиент получает только тайлы открытых клеток (get_tile_urls). Туман — локальная текстура.
+   */
+  image_data: string | null;
+}
+
+export interface MapCell {
+  map_id: string;
+  cx: number;
+  cy: number;
+  terrain: MapTerrain;
+}
+
+export interface MapReveal {
+  map_id: string;
+  cx: number;
+  cy: number;
+  scope: 'all' | 'hero';
+  hero_id: string | null;
+}
+
+export interface MapMarker {
+  id: string;
+  map_id: string;
+  /** 0..1 по ширине и высоте карты. */
+  x: number;
+  y: number;
+  kind: MapMarkerKind;
+  endonym: string;
+  name_ru: string;
+  name_state: MapNameState;
+  visibility: MapMarkerVisibility;
+  hero_ids: string[];
+  wiki_slug: string | null;
+}
+
+/** Личная пометка игрока. Мастер видит все, другие игроки — нет. */
+export interface MapPin {
+  id: string;
+  map_id: string;
+  x: number;
+  y: number;
+  hero_id: string;
+  label: string;
+}
+
 export interface World {
   revision: number;
   members: Member[];
@@ -324,9 +384,14 @@ export interface World {
   notes: Note[];
   sessions: GameSession[];
   audit_log: AuditEvent[];
+  world_map: WorldMap;
+  map_cells: MapCell[];
+  map_reveals: MapReveal[];
+  map_markers: MapMarker[];
+  map_pins: MapPin[];
 }
 
-export const SEED_REVISION = 2;
+export const SEED_REVISION = 3;
 
 export interface OpMeta {
   id: string;

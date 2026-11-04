@@ -22,8 +22,17 @@ import {
   withdrawTransfer,
 } from './domain';
 import type { LearnedSpell } from './combat';
-import type { HandFill, HandSide } from './types';
-import type { Session, World } from './types';
+import {
+  addMapPin,
+  moveMarker,
+  paintCells,
+  removeMapPin,
+  removeMarker,
+  saveMarker,
+  setMapImage,
+  type MarkerInput,
+} from './map';
+import type { HandFill, HandSide, Session, World } from './types';
 import { SEED_REVISION } from './types';
 
 export const GUEST: Session = { role: 'guest', heroId: null, preview: false };
@@ -55,6 +64,18 @@ export interface DataStore {
   learnSpellTome(instanceId: string): Promise<{ message: string; learned: LearnedSpell | null }>;
   rollbackEvent(eventId: string): Promise<void>;
   confirmEvent(eventId: string): Promise<void>;
+  /**
+   * Карта. Позже: gm_reveal_cells и get_tile_urls.
+   * TODO(supabase): закрытая клетка не отдаёт тайл. Личная пометка — RLS «свои + мастер».
+   * endonym маркера не уезжает, пока имя не открыто.
+   */
+  saveMarker(input: MarkerInput): Promise<void>;
+  moveMarker(id: string, x: number, y: number): Promise<void>;
+  removeMarker(id: string): Promise<void>;
+  paintCells(cells: { cx: number; cy: number }[], scope: 'all' | 'hero', heroIds: string[], open: boolean): Promise<void>;
+  addMapPin(x: number, y: number, label: string): Promise<void>;
+  removeMapPin(id: string): Promise<void>;
+  setMapImage(imageData: string | null): Promise<void>;
 }
 
 export interface StoreHooks {
@@ -259,6 +280,46 @@ export class CampaignStore implements DataStore {
   async saveNote(heroId: string, body: string): Promise<void> {
     await this.ready();
     await this.commit(saveNote(this.world, this.session, heroId, body, this.meta()));
+  }
+
+  async saveMarker(input: MarkerInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveMarker(this.world, this.session, input, this.meta()));
+  }
+
+  async moveMarker(id: string, x: number, y: number): Promise<void> {
+    await this.ready();
+    await this.commit(moveMarker(this.world, this.session, id, x, y));
+  }
+
+  async removeMarker(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeMarker(this.world, this.session, id));
+  }
+
+  async paintCells(
+    cells: { cx: number; cy: number }[],
+    scope: 'all' | 'hero',
+    heroIds: string[],
+    open: boolean,
+  ): Promise<void> {
+    await this.ready();
+    await this.commit(paintCells(this.world, this.session, cells, scope, heroIds, open));
+  }
+
+  async addMapPin(x: number, y: number, label: string): Promise<void> {
+    await this.ready();
+    await this.commit(addMapPin(this.world, this.session, x, y, label, this.meta()));
+  }
+
+  async removeMapPin(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeMapPin(this.world, this.session, id));
+  }
+
+  async setMapImage(imageData: string | null): Promise<void> {
+    await this.ready();
+    await this.commit(setMapImage(this.world, this.session, imageData));
   }
 }
 

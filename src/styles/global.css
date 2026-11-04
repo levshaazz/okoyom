@@ -1106,3 +1106,84 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
 .pct-98{width:98%}
 .pct-99{width:99%}
 .pct-100{width:100%}
+
+/* Карта */
+.map-stage { position: relative; height: calc(100vh - 58px); background: #14110d; overflow: hidden; }
+.map-svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.map-board { fill: #1a1612; }
+.map-wave { fill: none; stroke: rgba(236, 230, 214, 0.35); stroke-width: 1.2; }
+.map-tree { fill: #2c4030; }
+.map-hill { fill: none; stroke: rgba(58, 42, 27, 0.45); stroke-width: 2; }
+.map-shore { fill: none; stroke: rgba(90, 70, 40, 0.55); stroke-width: 2; }
+.map-pool { fill: rgba(80, 110, 120, 0.45); }
+.map-fog { fill: #12100e; }
+.map-fog.edit { fill: rgba(12, 10, 8, 0.78); stroke: rgba(207, 196, 162, 0.12); stroke-width: 1; }
+.map-shape { stroke: #1a1408; stroke-width: 1.2; }
+.map-shape.city { fill: var(--gold); }
+.map-shape.town { fill: #e6d7b0; }
+.map-shape.ruin { fill: #8d5a3c; }
+.map-shape.cave { fill: #3c4654; }
+.map-shape.camp { fill: #c47a3a; }
+.map-shape.wild { fill: #7f8f68; }
+.map-marker { cursor: pointer; }
+.map-name { font-family: "Cormorant SC", serif; font-size: 20px; letter-spacing: 0.08em; fill: #f6efdc; }
+.map-name.unknown { font-style: italic; fill: var(--rumor); }
+.map-sub { font-family: "EB Garamond", serif; font-size: 12px; fill: #d8ceb4; }
+.map-note path { fill: #25446b; stroke: #9fb6d4; }
+.map-note-label { font-family: "Marck Script", cursive; font-size: 16px; fill: #cfe0f5; }
+.map-zoom { position: absolute; left: 14px; top: 14px; border: 1px solid var(--rim-dim); background: rgba(12, 14, 17, 0.88); }
+.map-zoom button { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--salt); font-size: 22px; }
+.map-zoom button + button { border-top: 1px solid var(--rim-dim); }
+.map-tools, .map-fog-bar, .map-pin-form, .map-underlay {
+  position: absolute;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  z-index: 2;
+}
+.map-tools { left: 60px; top: 16px; }
+.map-fog-bar, .map-pin-form { left: 14px; top: 62px; background: rgba(12, 14, 17, 0.9); border: 1px solid var(--rim-dim); padding: 8px; }
+.map-pin-form input, .map-edit input, .map-edit select, .map-fog-bar select {
+  background: #101318;
+  border: 1px solid var(--rim-dim);
+  color: var(--text);
+  padding: 4px 8px;
+}
+.map-card {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: min(320px, calc(100% - 28px));
+  max-height: calc(100% - 28px);
+  overflow: auto;
+  background: rgba(12, 14, 17, 0.94);
+  border: 1px solid var(--rim);
+  padding: 12px 14px;
+  z-index: 3;
+}
+.map-card-title { font-family: "Cormorant SC", serif; font-size: 28px; letter-spacing: 0.08em; color: var(--salt); line-height: 1.1; }
+.map-edit { display: grid; gap: 8px; margin-top: 10px; }
+.map-edit label { display: grid; gap: 3px; font-family: "Alegreya SC", serif; font-size: 13px; color: var(--text-dim); }
+.map-underlay { right: 14px; bottom: 14px; left: auto; }
+.map-scale { position: absolute; left: 16px; bottom: 12px; display: flex; align-items: center; gap: 8px; color: #e5dfcf; font-size: 13px; }
+.map-scale span { width: 72px; height: 6px; border: 1px solid #e5dfcf; border-top: none; }
+.chip-row, .check-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip {
+  font-family: "Alegreya SC", serif;
+  font-size: 13px;
+  border: 1px solid var(--rim-dim);
+  color: var(--text-dim);
+  padding: 3px 9px;
+  background: rgba(12, 14, 17, 0.8);
+}
+.chip.on { border-color: var(--gold); color: var(--gold); }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
+@media (max-width: 800px) {
+  .map-stage { height: calc(100vh - 52px - 64px); }
+  .map-card { top: auto; bottom: 8px; right: 8px; left: 8px; width: auto; max-height: 46vh; }
+  .map-tools { left: 8px; right: 8px; top: 8px; }
+  .map-zoom { left: auto; right: 8px; top: 52px; }
+  .map-underlay { bottom: 8px; max-width: calc(100% - 70px); }
+  .map-name { font-size: 16px; }
+}

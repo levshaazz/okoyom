@@ -1,3 +1,4 @@
+import { mapSeed } from './map-seed';
 import { q } from '../lib/rational';
 import { SKILL_NAMES } from '../lib/skills';
 import { SEED_REVISION, type AuditEvent, type Hero, type Item, type ItemInstance, type SkillRow, type World } from '../lib/types';
@@ -746,6 +747,11 @@ const SEED: World = {
   ],
   notes: [],
   audit_log: [],
+  world_map: { id: 'test-map', title: 'Учебный берег', cols: 10, rows: 7, image_data: null },
+  map_cells: [],
+  map_reveals: [],
+  map_markers: [],
+  map_pins: [],
   sessions: [
     {
       id: 's1000000-0000-4000-8000-000000000001',
@@ -829,5 +835,6 @@ function seedAudit(world: World): AuditEvent[] {
 export function createSeedWorld(): World {
   const world = structuredClone(SEED);
   world.audit_log = seedAudit(world);
+  Object.assign(world, mapSeed(HERO));
   return world;
 }
