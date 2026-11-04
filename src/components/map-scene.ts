@@ -233,6 +233,14 @@ export async function mountMapScene(
   terrain.castShadow = !mobile;
   terrain.receiveShadow = true;
   scene.add(terrain);
+  const ocean = new THREE.Mesh(
+    new THREE.PlaneGeometry(MAP_W * 6, MAP_D * 6),
+    new THREE.MeshStandardMaterial({ color: '#16384c', roughness: 0.35, metalness: 0.08 }),
+  );
+  ocean.rotation.x = -Math.PI / 2;
+  ocean.position.y = lift(0) - 0.2;
+  ocean.receiveShadow = true;
+  scene.add(ocean);
 
   const waterTex = new THREE.CanvasTexture(waterCanvas);
   waterTex.wrapS = waterTex.wrapT = THREE.ClampToEdgeWrapping;
@@ -286,7 +294,7 @@ export async function mountMapScene(
         vUv = uv;
         vec3 p = position;
         float n = sin(p.x * 0.45 + uTime * 0.35) * cos(p.z * 0.4 - uTime * 0.22);
-        p.y += 0.18 + n * 0.12;
+        p.y += 0.05 + n * 0.04;
         vH = n;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
