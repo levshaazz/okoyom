@@ -353,9 +353,16 @@ export interface MapMarker {
   visibility: MapMarkerVisibility;
   hero_ids: string[];
   wiki_slug: string | null;
+  blurb: string;
+  threat: string;
+  loot: string;
+  visits: string;
+  hook: string;
+  /** Слух: подпись курсивом и пометка «непроверено». */
+  rumor: boolean;
 }
 
-/** Личная пометка игрока. Мастер видит все, другие игроки — нет. */
+/** Личная пометка. shared — метка отряда, её видят все ходоки. */
 export interface MapPin {
   id: string;
   map_id: string;
@@ -363,6 +370,20 @@ export interface MapPin {
   y: number;
   hero_id: string;
   label: string;
+  shared: boolean;
+}
+
+export interface MapZone {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  tone: 'low' | 'mid' | 'high';
+}
+
+export interface MapRoute {
+  id: string;
+  points: { x: number; y: number }[];
 }
 
 export interface World {
@@ -389,9 +410,11 @@ export interface World {
   map_reveals: MapReveal[];
   map_markers: MapMarker[];
   map_pins: MapPin[];
+  map_zones: MapZone[];
+  map_routes: MapRoute[];
 }
 
-export const SEED_REVISION = 3;
+export const SEED_REVISION = 4;
 
 export interface OpMeta {
   id: string;

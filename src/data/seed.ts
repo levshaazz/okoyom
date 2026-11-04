@@ -752,6 +752,8 @@ const SEED: World = {
   map_reveals: [],
   map_markers: [],
   map_pins: [],
+  map_zones: [],
+  map_routes: [],
   sessions: [
     {
       id: 's1000000-0000-4000-8000-000000000001',

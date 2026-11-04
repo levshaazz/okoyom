@@ -1109,42 +1109,83 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
 
 /* Карта */
 .map-stage { position: relative; height: calc(100vh - 58px); background: #14110d; overflow: hidden; }
-.map-svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
-.map-board { fill: #1a1612; }
-.map-wave { fill: none; stroke: rgba(236, 230, 214, 0.35); stroke-width: 1.2; }
-.map-tree { fill: #2c4030; }
-.map-hill { fill: none; stroke: rgba(58, 42, 27, 0.45); stroke-width: 2; }
-.map-shore { fill: none; stroke: rgba(90, 70, 40, 0.55); stroke-width: 2; }
-.map-pool { fill: rgba(80, 110, 120, 0.45); }
-.map-fog { fill: #12100e; }
-.map-fog.edit { fill: rgba(12, 10, 8, 0.78); stroke: rgba(207, 196, 162, 0.12); stroke-width: 1; }
-.map-shape { stroke: #1a1408; stroke-width: 1.2; }
-.map-shape.city { fill: var(--gold); }
-.map-shape.town { fill: #e6d7b0; }
-.map-shape.ruin { fill: #8d5a3c; }
-.map-shape.cave { fill: #3c4654; }
-.map-shape.camp { fill: #c47a3a; }
-.map-shape.wild { fill: #7f8f68; }
-.map-marker { cursor: pointer; }
-.map-name { font-family: "Cormorant SC", serif; font-size: 20px; letter-spacing: 0.08em; fill: #f6efdc; }
-.map-name.unknown { font-style: italic; fill: var(--rumor); }
-.map-sub { font-family: "EB Garamond", serif; font-size: 12px; fill: #d8ceb4; }
-.map-note path { fill: #25446b; stroke: #9fb6d4; }
-.map-note-label { font-family: "Marck Script", cursive; font-size: 16px; fill: #cfe0f5; }
-.map-zoom { position: absolute; left: 14px; top: 14px; border: 1px solid var(--rim-dim); background: rgba(12, 14, 17, 0.88); }
+.map-gl, .map-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.map-gl { touch-action: none; }
+.map-overlay { pointer-events: none; }
+.map-layers {
+  position: absolute;
+  left: 14px;
+  bottom: 18px;
+  width: min(250px, calc(100% - 28px));
+  z-index: 3;
+  background: rgba(12, 14, 17, 0.9);
+  border: 1px solid var(--rim-dim);
+  padding: 12px 14px;
+  max-height: calc(100% - 90px);
+  overflow: auto;
+}
+.map-layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: var(--text);
+  padding: 4px 0;
+  font-size: 15px;
+}
+.map-layer i {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--rim);
+  display: inline-block;
+  flex: none;
+}
+.map-layer i.on { background: var(--gold); box-shadow: inset 0 0 0 2px #0b0d10; }
+.map-layer.rumor { color: var(--rumor); font-style: italic; }
+.map-north {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  border: 1px solid var(--rim);
+  background: rgba(12, 14, 17, 0.88);
+  color: var(--gold);
+  font-family: "Alegreya SC", serif;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+}
+.map-fog-tools, .map-pin-form, .map-file { display: grid; gap: 6px; margin-top: 8px; }
+.map-fog-tools { display: flex; flex-wrap: wrap; }
+.map-file input, .map-pin-form input, .map-edit input, .map-edit select, .map-fog-tools select {
+  background: #101318;
+  border: 1px solid var(--rim-dim);
+  color: var(--text);
+  padding: 4px 8px;
+  max-width: 100%;
+}
+.map-hint { margin: 8px 0 0; line-height: 1.35; }
+.map-facts { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.map-facts td { padding: 4px 6px 4px 0; vertical-align: top; font-size: 14px; }
+.map-facts td:first-child { color: var(--text-dim); width: 72px; }
+.map-card-sub { margin: 0 0 8px; color: var(--text-dim); }
+.rumor-ink { color: var(--rumor); }
+.map-fallback {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 4;
+  background: rgba(12, 14, 17, 0.9);
+  border: 1px solid var(--rim-dim);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.map-zoom { position: absolute; left: 14px; top: 14px; z-index: 3; border: 1px solid var(--rim-dim); background: rgba(12, 14, 17, 0.88); }
 .map-zoom button { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--salt); font-size: 22px; }
 .map-zoom button + button { border-top: 1px solid var(--rim-dim); }
-.map-tools, .map-fog-bar, .map-pin-form, .map-underlay {
-  position: absolute;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  z-index: 2;
-}
-.map-tools { left: 60px; top: 16px; }
-.map-fog-bar, .map-pin-form { left: 14px; top: 62px; background: rgba(12, 14, 17, 0.9); border: 1px solid var(--rim-dim); padding: 8px; }
-.map-pin-form input, .map-edit input, .map-edit select, .map-fog-bar select {
+.map-pin-form input, .map-edit input, .map-edit select, .map-fog-tools select {
   background: #101318;
   border: 1px solid var(--rim-dim);
   color: var(--text);
@@ -1181,9 +1222,9 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
 .check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
 @media (max-width: 800px) {
   .map-stage { height: calc(100vh - 52px - 64px); }
-  .map-card { top: auto; bottom: 8px; right: 8px; left: 8px; width: auto; max-height: 46vh; }
-  .map-tools { left: 8px; right: 8px; top: 8px; }
-  .map-zoom { left: auto; right: 8px; top: 52px; }
-  .map-underlay { bottom: 8px; max-width: calc(100% - 70px); }
-  .map-name { font-size: 16px; }
+  .map-card { top: auto; bottom: 8px; right: 8px; left: 8px; width: auto; max-height: 42vh; }
+  .map-layers { top: 8px; bottom: auto; max-height: 32vh; width: min(210px, 68%); }
+  .map-hint { display: none; }
+  .map-zoom { left: auto; right: 8px; top: 8px; }
+  .map-north { right: 8px; bottom: 8px; }
 }

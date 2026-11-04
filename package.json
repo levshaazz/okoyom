@@ -21,10 +21,12 @@
     "astro": "^5.15.9",
     "idb": "^8.0.3",
     "preact": "^10.27.2",
+    "three": "^0.170.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
+    "@types/three": "^0.170.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }

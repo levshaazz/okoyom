@@ -5,6 +5,7 @@ import {
   isRevealed,
   markerLabel,
   paintCells,
+  rasterFog,
   visibleCells,
   visibleMarkers,
   visiblePins,
@@ -44,9 +45,9 @@ describe('туман и подписи карты', () => {
     expect(isRevealed(world, rimte, 6, 2)).toBe(true);
     expect(isRevealed(world, toivo, 6, 2)).toBe(false);
     expect(markerLabel(world.map_markers.find((marker) => marker.id === 'm-hill')!, rimte).primary).toBe('Северный холм');
-    expect(visiblePins(world, toivo).map((pin) => pin.label)).toEqual(['Моя стоянка у склада']);
-    expect(visiblePins(world, rimte)).toEqual([]);
-    expect(visiblePins(world, gm)).toHaveLength(1);
+    expect(visiblePins(world, toivo).map((pin) => pin.label).sort()).toEqual(['Моя стоянка у склада', 'Стоянка отряда']);
+    expect(visiblePins(world, rimte).map((pin) => pin.label)).toEqual(['Стоянка отряда']);
+    expect(visiblePins(world, gm)).toHaveLength(2);
     expect(ids(gm)).toContain('m-barrow');
     expect(markerLabel(world.map_markers.find((marker) => marker.id === 'm-barrow')!, gm).primary).toBe('Медьюр');
   });
@@ -62,5 +63,13 @@ describe('туман и подписи карты', () => {
     const hidden = paintCells(createSeedWorld(), gm, [{ cx: 2, cy: 3 }], 'all', [], false);
     expect(isRevealed(hidden, guest, 2, 3)).toBe(false);
     expect(visibleMarkers(hidden, guest).some((marker) => marker.id === 'm-harbor')).toBe(false);
+  });
+
+  it('маска тумана мягкая: открытая клетка прозрачна, дальний край закрыт', () => {
+    const mask = rasterFog(createSeedWorld(), guest, 48);
+    const at = (nx: number, ny: number) => mask[Math.floor(ny * 48) * 48 + Math.floor(nx * 48)] ?? 1;
+    expect(at(0.28, 0.48)).toBeLessThan(0.35);
+    expect(at(0.02, 0.02)).toBeGreaterThan(0.85);
+    expect(at(0.84, 0.68)).toBeGreaterThan(0.7);
   });
 });

@@ -73,11 +73,57 @@ export function visibleCells(world: World, actor: Actor): MapCell[] {
   return world.map_cells.filter((cell) => isRevealed(world, actor, cell.cx, cell.cy));
 }
 
-/** Личные пометки: свои и все у мастера. Туман их не прячет от автора. */
+/** Личные пометки: свои и все у мастера. Общая метка отряда видна ходокам. Туман автора не прячет. */
 export function visiblePins(world: World, actor: Actor): MapPin[] {
   if (isGm(actor)) return world.map_pins;
   if (!playing(actor) || !actor.heroId) return [];
-  return world.map_pins.filter((pin) => pin.hero_id === actor.heroId);
+  return world.map_pins.filter((pin) => pin.shared || pin.hero_id === actor.heroId);
+}
+
+function boxBlur(source: Float32Array, size: number, radius: number): Float32Array {
+  const pass = new Float32Array(source.length);
+  const out = new Float32Array(source.length);
+  const blur = (from: Float32Array, to: Float32Array, horizontal: boolean) => {
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        let sum = 0;
+        let n = 0;
+        for (let k = -radius; k <= radius; k++) {
+          const sx = horizontal ? Math.min(size - 1, Math.max(0, x + k)) : x;
+          const sy = horizontal ? y : Math.min(size - 1, Math.max(0, y + k));
+          sum += from[sy * size + sx] ?? 0;
+          n++;
+        }
+        to[y * size + x] = sum / n;
+      }
+    }
+  };
+  blur(source, pass, true);
+  blur(pass, out, false);
+  return out;
+}
+
+/**
+ * Маска тумана: 1 — закрыто, 0 — открыто. Края размыты.
+ * Мастер видит закрытое для всех как плотный туман, клетки «только герою» — реже.
+ * TODO(supabase): маска строится из map_reveals, которые RLS уже отфильтровал.
+ */
+export const FOG_SIZE = 96;
+
+export function rasterFog(world: World, actor: Actor, size = FOG_SIZE): Float32Array {
+  const raw = new Float32Array(size * size);
+  const gm = isGm(actor);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = cellOf(world.world_map, (x + 0.5) / size, (y + 0.5) / size);
+      let hidden = 1;
+      if (gm) hidden = openToAll(world, cell.cx, cell.cy) ? 0 : 0.72;
+      else hidden = isRevealed(world, actor, cell.cx, cell.cy) ? 0 : 1;
+      raw[y * size + x] = hidden;
+    }
+  }
+  const radius = Math.max(1, Math.round(size / world.world_map.cols / 3));
+  return boxBlur(raw, size, radius);
 }
 
 export interface MarkerLabel {
@@ -113,6 +159,12 @@ export interface MarkerInput {
   visibility: MapMarkerVisibility;
   heroIds: string[];
   wikiSlug: string;
+  blurb?: string;
+  threat?: string;
+  loot?: string;
+  visits?: string;
+  hook?: string;
+  rumor?: boolean;
 }
 
 export function saveMarker(world: World, actor: Actor, input: MarkerInput, meta: OpMeta): World {
@@ -130,6 +182,8 @@ export function saveMarker(world: World, actor: Actor, input: MarkerInput, meta:
     for (const heroId of heroIds) heroById(world, heroId);
   }
   const next = structuredClone(world);
+  const existing = input.id ? next.map_markers.find((row) => row.id === input.id) : undefined;
+  if (input.id && !existing) throw new DomainError('Метки нет.');
   const marker: MapMarker = {
     id: input.id ?? meta.id,
     map_id: next.world_map.id,
@@ -142,9 +196,13 @@ export function saveMarker(world: World, actor: Actor, input: MarkerInput, meta:
     visibility: input.visibility,
     hero_ids: input.visibility === 'heroes' ? heroIds : [],
     wiki_slug: input.wikiSlug.trim() || null,
+    blurb: input.blurb ?? existing?.blurb ?? '',
+    threat: input.threat ?? existing?.threat ?? '',
+    loot: input.loot ?? existing?.loot ?? '',
+    visits: input.visits ?? existing?.visits ?? '',
+    hook: input.hook ?? existing?.hook ?? '',
+    rumor: input.rumor ?? existing?.rumor ?? false,
   };
-  const existing = input.id ? next.map_markers.find((row) => row.id === input.id) : undefined;
-  if (input.id && !existing) throw new DomainError('Метки нет.');
   if (existing) Object.assign(existing, marker, { id: existing.id });
   else next.map_markers.push(marker);
   return next;
@@ -214,6 +272,7 @@ export function addMapPin(world: World, actor: Actor, x: number, y: number, labe
     y: clamp01(y),
     hero_id: actor.heroId,
     label: text,
+    shared: false,
   });
   return next;
 }

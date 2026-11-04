@@ -1,4 +1,4 @@
-import type { MapCell, MapMarker, MapPin, MapReveal, MapTerrain, World, WorldMap } from '../lib/types';
+import type { MapCell, MapMarker, MapPin, MapReveal, MapRoute, MapTerrain, MapZone, World, WorldMap } from '../lib/types';
 
 const MAP_ID = 'test-map';
 
@@ -18,7 +18,7 @@ function terrainAt(cx: number, cy: number): MapTerrain {
  */
 export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
   World,
-  'world_map' | 'map_cells' | 'map_reveals' | 'map_markers' | 'map_pins'
+  'world_map' | 'map_cells' | 'map_reveals' | 'map_markers' | 'map_pins' | 'map_zones' | 'map_routes'
 > {
   const world_map: WorldMap = {
     id: MAP_ID,
@@ -67,6 +67,12 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       visibility: 'public',
       hero_ids: [],
       wiki_slug: 'gavany',
+      blurb: 'Пробная гавань учебного берега: пирсы, склад и доска заказов. Это не география кампании.',
+      threat: '1–3',
+      loot: 'верёвка, мелкая рыба',
+      visits: 'пробный выход',
+      hook: 'доска заказов у причала',
+      rumor: false,
     },
     {
       id: 'm-ford',
@@ -80,6 +86,12 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       visibility: 'public',
       hero_ids: [],
       wiki_slug: null,
+      blurb: 'Мелкий брод на пробной реке. Самоназвание ещё не открыто.',
+      threat: '1–3',
+      loot: '',
+      visits: '',
+      hook: '',
+      rumor: false,
     },
     {
       id: 'm-question',
@@ -93,6 +105,12 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       visibility: 'public',
       hero_ids: [],
       wiki_slug: null,
+      blurb: 'Имя этого урочища ещё не названо. Пока на карте только знак вопроса.',
+      threat: '2–5',
+      loot: '',
+      visits: '',
+      hook: '',
+      rumor: true,
     },
     {
       id: 'm-hill',
@@ -106,6 +124,12 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       visibility: 'heroes',
       hero_ids: [hero.rimte],
       wiki_slug: 'holmy',
+      blurb: 'Холм открыт одному герою. Самоназвание пока спрятано.',
+      threat: '2–5',
+      loot: '',
+      visits: '',
+      hook: '',
+      rumor: false,
     },
     {
       id: 'm-barrow',
@@ -119,6 +143,12 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       visibility: 'public',
       hero_ids: [],
       wiki_slug: null,
+      blurb: 'Руины в тумане. Пока клетка закрыта, место не рисуется ходокам.',
+      threat: '6+',
+      loot: '',
+      visits: '',
+      hook: '',
+      rumor: false,
     },
   ];
 
@@ -130,8 +160,35 @@ export function mapSeed(hero: { rimte: string; toivo: string }): Pick<
       y: 0.5,
       hero_id: hero.toivo,
       label: 'Моя стоянка у склада',
+      shared: false,
+    },
+    {
+      id: 'pin-party',
+      map_id: MAP_ID,
+      x: 0.33,
+      y: 0.42,
+      hero_id: hero.rimte,
+      label: 'Стоянка отряда',
+      shared: true,
     },
   ];
 
-  return { world_map, map_cells, map_reveals, map_markers, map_pins };
+  const map_zones: MapZone[] = [
+    { id: 'z-harbor', x: 0.32, y: 0.5, radius: 0.08, tone: 'low' },
+    { id: 'z-hill', x: 0.66, y: 0.32, radius: 0.06, tone: 'mid' },
+    { id: 'z-barrow', x: 0.84, y: 0.68, radius: 0.07, tone: 'high' },
+  ];
+
+  const map_routes: MapRoute[] = [
+    {
+      id: 'route-shore',
+      points: [
+        { x: 0.28, y: 0.48 },
+        { x: 0.36, y: 0.5 },
+        { x: 0.46, y: 0.58 },
+      ],
+    },
+  ];
+
+  return { world_map, map_cells, map_reveals, map_markers, map_pins, map_zones, map_routes };
 }
