@@ -1,6 +1,15 @@
 import { decode } from 'fast-png';
 import { MAP_MANIFEST, type HeightEncoding } from '../data/map-manifest';
 import {
+  applyCanopy,
+  canopyDepthMaterial,
+  createForestMesh,
+  createRoadMesh,
+  emptyMaskTexture,
+  forestTexture,
+  type CanopyUniforms,
+} from './map-drape';
+import {
   blurRect,
   isWater,
   liftMeters,
@@ -9,6 +18,8 @@ import {
   resampleU16,
   sampleColor,
 } from '../lib/map-height';
+import { forestPlacements, redChannel, softenForestMask } from '../lib/map-forest';
+import { ROAD_STYLE, buildRoadRibbon, traceMaskRoads, type MapRoad } from '../lib/map-roads';
 import type { SceneLayers, SceneMarker, ScenePin, SceneRoute, SceneZone } from '../lib/map-view-model';
 import * as THREE from 'three';
 
@@ -279,6 +290,23 @@ export async function mountMapScene(
     return isWater(nx, ny) || normalizedToMeters(heightAt(nx, ny)) < MAP_MANIFEST.seaLevelM;
   };
 
+  const forestImage = MAP_MANIFEST.forestUrl ? await loadImage(MAP_MANIFEST.forestUrl) : null;
+  const forestMask = forestImage ? redChannel(forestImage.data) : null;
+  const canopyW = 512;
+  const canopyH = 288;
+  const forestTex = forestMask
+    ? forestTexture(softenForestMask(forestMask, forestImage!.width, forestImage!.height, canopyW, canopyH), canopyW, canopyH)
+    : emptyMaskTexture();
+  const treeCols = mobile ? 58 : 84;
+  const treeRows = mobile ? 32 : 48;
+  const canopyLift = mobile ? 0.14 : 0.2;
+  const treeSpots = forestMask
+    ? forestPlacements(forestMask, forestImage!.width, forestImage!.height, treeCols, treeRows, waterBool).map((spot) => {
+        const world = place(spot.x, spot.y);
+        return { ...spot, wx: world.x, wy: world.y + canopyLift * 0.72, wz: world.z };
+      })
+    : [];
+
   const texSize = mobile ? 384 : 640;
   const albedoCanvas = MAP_MANIFEST.albedoUrl ? null : paintAlbedo(texSize, heightAt, waterBool);
   const waterCanvas = waterImage ? null : paintWater(mobile ? 256 : 512, waterBool);
@@ -373,10 +401,8 @@ export async function mountMapScene(
       albedoTex.needsUpdate = true;
     }
   }
-  const terrain = new THREE.Mesh(
-    geo,
-    new THREE.MeshStandardMaterial({ map: albedoTex, roughness: 0.92, metalness: 0.02 }),
-  );
+  const terrainMat = new THREE.MeshStandardMaterial({ map: albedoTex, roughness: 0.92, metalness: 0.02 });
+  const terrain = new THREE.Mesh(geo, terrainMat);
   terrain.castShadow = !mobile;
   terrain.receiveShadow = true;
   scene.add(terrain);
@@ -408,6 +434,15 @@ export async function mountMapScene(
     waterTex = new THREE.CanvasTexture(waterCanvas ?? paintWater(256, waterBool));
   }
   waterTex.wrapS = waterTex.wrapT = THREE.ClampToEdgeWrapping;
+  waterTex.colorSpace = THREE.NoColorSpace;
+  const canopyUniforms: CanopyUniforms = {
+    uForest: { value: forestTex },
+    uWater: { value: waterTex },
+    uForestOn: { value: 1 },
+    uCanopy: { value: canopyLift },
+  };
+  applyCanopy(terrainMat, canopyUniforms);
+  if (!mobile) terrain.customDepthMaterial = canopyDepthMaterial(canopyUniforms);
   const heightTex = packU16(waterU16, waterW, waterH);
   const sunDir = new THREE.Vector3(-0.4, 0.75, -0.35).normalize();
   const waterFrag = `uniform sampler2D uMask; uniform sampler2D uHeight; uniform vec3 uSun;
@@ -500,11 +535,24 @@ export async function mountMapScene(
   const fogMat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    uniforms: { uMask: { value: fogTex }, uTime: { value: 0 }, uOpacity: { value: 0.92 } },
-    vertexShader: `uniform float uTime; varying vec2 vUv; varying float vH;
+    uniforms: {
+      uMask: { value: fogTex },
+      uTime: { value: 0 },
+      uOpacity: { value: 0.92 },
+      uForest: canopyUniforms.uForest,
+      uWater: canopyUniforms.uWater,
+      uForestOn: canopyUniforms.uForestOn,
+      uCanopy: canopyUniforms.uCanopy,
+    },
+    vertexShader: `uniform float uTime; uniform sampler2D uForest; uniform sampler2D uWater; uniform float uForestOn; uniform float uCanopy;
+      varying vec2 vUv; varying float vH;
       void main(){
         vUv = uv;
         vec3 p = position;
+        float forestMask = texture2D(uForest, uv).r;
+        float wet = texture2D(uWater, uv).r;
+        forestMask *= 1.0 - smoothstep(0.42, 0.72, wet);
+        p.y += forestMask * uForestOn * uCanopy;
         float n = sin(p.x * 0.45 + uTime * 0.35) * cos(p.z * 0.4 - uTime * 0.22);
         p.y += 0.05 + n * 0.04;
         vH = n;
@@ -529,7 +577,40 @@ export async function mountMapScene(
   });
   const fogShell = new THREE.Mesh(geo, fogMat);
   fogShell.frustumCulled = false;
+  fogShell.renderOrder = 4;
   scene.add(fogShell);
+
+  const roadsImage = MAP_MANIFEST.roadsUrl ? await loadImage(MAP_MANIFEST.roadsUrl) : null;
+  let mapRoads: MapRoad[] = MAP_MANIFEST.roads.map((road) => ({
+    ...road,
+    points: road.points.map((point) => ({ x: point.x, y: point.y })),
+  }));
+  if (roadsImage) {
+    mapRoads = mapRoads.concat(traceMaskRoads(redChannel(roadsImage.data), roadsImage.width, roadsImage.height));
+  }
+  const seaY = lift(sea01);
+  const forestCover = (nx: number, ny: number) => {
+    if (!forestMask || !forestImage || waterBool(nx, ny)) return 0;
+    const x = Math.min(forestImage.width - 1, Math.max(0, Math.floor(nx * (forestImage.width - 1))));
+    const y = Math.min(forestImage.height - 1, Math.max(0, Math.floor(ny * (forestImage.height - 1))));
+    return (forestMask[y * forestImage.width + x] ?? 0) / 255;
+  };
+  const ribbon = buildRoadRibbon(mapRoads, (point, tier) => {
+    const world = place(point.x, point.y);
+    const canopy = forestCover(point.x, point.y) * canopyLift;
+    let y = world.y + canopy + 0.045;
+    if (tier === 'sail') y = Math.max(world.y, seaY) + 0.06;
+    else if (waterBool(point.x, point.y)) y = Math.max(world.y, seaY) + 0.04;
+    return { x: world.x, y, z: world.z };
+  });
+  const forest = createForestMesh(
+    treeSpots,
+    mobile ? { near: 4.2, far: 8.5, hide: 12 } : { near: 6.5, far: 14, hide: 22 },
+    fogTex,
+  );
+  if (forest) scene.add(forest.mesh);
+  const roads = createRoadMesh(ribbon, fogTex);
+  if (roads) scene.add(roads.mesh);
 
   const zoneGroup = new THREE.Group();
   const routeGroup = new THREE.Group();
@@ -548,6 +629,8 @@ export async function mountMapScene(
     party: false,
     endonym: true,
     translation: true,
+    forests: true,
+    roads: true,
   };
   let fogTarget = new Float32Array(4).fill(1);
   let fogShown = fogTarget.slice();
@@ -652,6 +735,30 @@ export async function mountMapScene(
         if (pin.shared && !layers.party) continue;
         if (!pin.shared && !layers.pins) continue;
         drawText(pin.x, pin.y, pin.label, null, !pin.shared);
+      }
+    }
+    if (layers.roads) {
+      for (const road of mapRoads) {
+        if (!road.label) continue;
+        const mid = road.points[Math.floor((road.points.length - 1) / 2)];
+        if (!mid) continue;
+        const anchor = place(mid.x, mid.y);
+        const p = anchor.clone().project(camera);
+        if (p.z > 1) continue;
+        const distCam = camera.position.distanceTo(anchor);
+        if (distCam > 24) continue;
+        const sx = (p.x * 0.5 + 0.5) * w;
+        const sy = (-p.y * 0.5 + 0.5) * h;
+        const size = Math.max(11, Math.min(18, 260 / distCam)) * (w / (canvas.clientWidth || w));
+        overlayCtx.save();
+        overlayCtx.translate(sx, sy);
+        overlayCtx.shadowColor = 'rgba(0,0,0,0.8)';
+        overlayCtx.shadowBlur = 4;
+        overlayCtx.fillStyle = ROAD_STYLE[road.tier].color;
+        overlayCtx.font = `600 ${size}px "Alegreya SC", serif`;
+        overlayCtx.textAlign = 'center';
+        overlayCtx.fillText(road.label, 0, size * 0.9);
+        overlayCtx.restore();
       }
     }
     const cx = w - 78 * (w / (canvas.clientWidth || w));
@@ -822,6 +929,10 @@ export async function mountMapScene(
       }
       if (changed) fogTex.needsUpdate = true;
     }
+    if (roads) {
+      roads.fov.value = (camera.fov * Math.PI) / 180;
+      roads.resolution.value.set(Math.max(1, canvas.clientWidth), Math.max(1, canvas.clientHeight));
+    }
     applyCamera();
     renderer.render(scene, camera);
     if (frame++ % 1 === 0) drawLabels();
@@ -851,6 +962,8 @@ export async function mountMapScene(
         fogTex.flipY = false;
         fogTex.needsUpdate = true;
         fogMat.uniforms.uMask!.value = fogTex;
+        if (forest) forest.fog.value = fogTex;
+        if (roads) roads.fog.value = fogTex;
       }
     },
     setMarkers(next) {
@@ -863,6 +976,9 @@ export async function mountMapScene(
       layers = next;
       zoneGroup.visible = next.threats;
       routeGroup.visible = next.routes;
+      canopyUniforms.uForestOn.value = next.forests ? 1 : 0;
+      if (forest) forest.mesh.visible = next.forests;
+      if (roads) roads.mesh.visible = next.roads;
     },
     setZones(zones) {
       zoneGroup.clear();
@@ -925,6 +1041,17 @@ export async function mountMapScene(
       waterTex.dispose();
       heightTex.dispose();
       fogTex.dispose();
+      forestTex.dispose();
+      if (forest) {
+        forest.mesh.geometry.dispose();
+        (forest.mesh.material as THREE.Material).dispose();
+      }
+      if (roads) {
+        roads.mesh.geometry.dispose();
+        (roads.mesh.material as THREE.Material).dispose();
+      }
+      const depth = terrain.customDepthMaterial;
+      if (depth && !Array.isArray(depth)) depth.dispose();
     },
   };
 }

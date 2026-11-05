@@ -35,4 +35,8 @@ export interface SceneLayers {
   party: boolean;
   endonym: boolean;
   translation: boolean;
+  /** Полог и кроны по маске леса. */
+  forests: boolean;
+  /** Дороги манифеста и маска, если она есть. */
+  roads: boolean;
 }
