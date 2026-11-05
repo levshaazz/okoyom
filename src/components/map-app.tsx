@@ -31,6 +31,8 @@ const LAYERS: SceneLayers = {
   party: false,
   endonym: true,
   translation: true,
+  forests: true,
+  roads: true,
 };
 
 export default function MapApp() {
@@ -225,6 +227,8 @@ export default function MapApp() {
       </button>
       <aside class="map-layers">
         <div class="ptitle">Слои</div>
+        <Layer on={layers.forests} label="Леса" click={() => toggle('forests')} />
+        <Layer on={layers.roads} label="Дороги" click={() => toggle('roads')} />
         <Layer on={layers.places} label="Открытые места" click={() => toggle('places')} />
         <Layer on={layers.threats} label="Зоны угрозы" click={() => toggle('threats')} />
         <Layer on={layers.rumors} label="Слухи (непроверено)" rumor click={() => toggle('rumors')} />

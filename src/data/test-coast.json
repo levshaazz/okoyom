@@ -27,5 +27,60 @@
     { "name": "Old Bridge", "type": "bridge", "x": 0.55, "y": 0.52, "elevation_m": 53 },
     { "name": "Pine Ridge", "type": "peak", "x": 0.8972, "y": 0.23, "elevation_m": 795 },
     { "name": "Seal Island", "type": "island", "x": 0.1, "y": 0.9, "elevation_m": 6 }
+  ],
+  "roads": [
+    {
+      "id": "test-tract",
+      "tier": "tract",
+      "name": "Test Tract",
+      "label": "TEST",
+      "points": [
+        { "x": 0.47, "y": 0.69 },
+        { "x": 0.5328, "y": 0.5417 },
+        { "x": 0.5453, "y": 0.5194 },
+        { "x": 0.55, "y": 0.52 },
+        { "x": 0.5984, "y": 0.4417 },
+        { "x": 0.6021, "y": 0.4259 }
+      ]
+    },
+    {
+      "id": "test-road",
+      "tier": "road",
+      "name": "Test Road",
+      "label": "TEST",
+      "points": [
+        { "x": 0.1624, "y": 0.7669 },
+        { "x": 0.4297, "y": 0.6639 },
+        { "x": 0.47, "y": 0.69 }
+      ]
+    },
+    {
+      "id": "test-trail",
+      "tier": "trail",
+      "name": "Test Trail",
+      "label": "TEST",
+      "assumed": true,
+      "points": [
+        { "x": 0.6021, "y": 0.4259 },
+        { "x": 0.6266, "y": 0.4472 },
+        { "x": 0.8922, "y": 0.2139 },
+        { "x": 0.8972, "y": 0.23 }
+      ]
+    },
+    {
+      "id": "test-sail",
+      "tier": "sail",
+      "name": "Test Sail",
+      "label": "TEST",
+      "points": [
+        { "x": 0.47, "y": 0.69 },
+        { "x": 0.47, "y": 0.735 },
+        { "x": 0.4, "y": 0.8 },
+        { "x": 0.3, "y": 0.93 },
+        { "x": 0.18, "y": 0.94 },
+        { "x": 0.11, "y": 0.93 },
+        { "x": 0.1, "y": 0.9 }
+      ]
+    }
   ]
 }
