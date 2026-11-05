@@ -150,7 +150,7 @@ const items: Item[] = [
     weight: q(1, 3),
     price: 0,
     lot: 1,
-    public_desc: 'Книга на руках у Римте. Страницы откроются держателю, когда появится сервер. В этом срезе текста нет.',
+    public_desc: 'Книга на руках у Римте. Страницы открываются только держателю.',
     props: { subtype: 'книга' },
   },
   {
@@ -231,6 +231,16 @@ const items: Item[] = [
     price: 2,
     lot: 1,
     public_desc: 'Чистые льняные бинты.',
+    props: {},
+  },
+  {
+    id: 'book-quiet',
+    name: 'Тетрадь тихого шага',
+    kind: 'book',
+    weight: q(1, 3),
+    price: 0,
+    lot: 1,
+    public_desc: 'Тонкая тетрадь. Текст открывается только держателю. Первое чтение учит.',
     props: {},
   },
   {
@@ -605,6 +615,7 @@ const SEED: World = {
     inst('b2000000-0000-4000-8000-000000000005', 'book-salt', HERO.toivo, 1, 'bag'),
     inst('b2000000-0000-4000-8000-000000000006', 'tome-circle', HERO.toivo, 1, 'bag'),
     inst('b2000000-0000-4000-8000-000000000007', 'tool-torch', HERO.toivo, 1, 'bag'),
+    inst('b2000000-0000-4000-8000-000000000008', 'book-quiet', HERO.toivo, 1, 'bag'),
     inst('b3000000-0000-4000-8000-000000000001', 'sword-saber', HERO.zhdan, 1, 'worn'),
     inst('b3000000-0000-4000-8000-000000000002', 'shield-leather', HERO.zhdan, 1, 'worn'),
     inst('b3000000-0000-4000-8000-000000000003', 'armor-mail', HERO.zhdan, 1, 'worn'),
@@ -746,6 +757,31 @@ const SEED: World = {
   ],
   notes: [],
   audit_log: [],
+  books: [
+    { id: 'book-pilot', title: 'Лоция сухого дна', author: 'пробный автор', skill_bonus: null },
+    { id: 'book-quiet', title: 'Тетрадь тихого шага', author: 'пробный наставник', skill_bonus: { skill: 'Скрытность', amount: 2 } },
+  ],
+  book_pages: [
+    { book_id: 'book-pilot', n: 1, body: 'Пробная страница. Текст видит только тот, у кого книга в сумке. Здесь нет карты и нет тайны.' },
+    { book_id: 'book-pilot', n: 2, body: 'Вторая страница. Листайте разворот: слева нечётные, справа чётные. На телефоне страница одна, её смахивают.' },
+    { book_id: 'book-pilot', n: 3, body: 'Третья страница. Поля можно оставить пустыми. Это учебный текст, не запись мастера.' },
+    { book_id: 'book-quiet', n: 1, body: 'Первое прочтение прибавляет два к Скрытности и больше не повторяется. Дальше книга просто читается.' },
+    { book_id: 'book-quiet', n: 2, body: 'Вторая страница тетради. Шаг короче, дыхание тише. Это всё, чему она учит в этом срезе.' },
+  ],
+  book_copies: [
+    { id: 'copy-pilot', book_id: 'book-pilot', holder_hero_id: HERO.rimte, instance_id: 'b1000000-0000-4000-8000-00000000000a', first_read_by: [HERO.rimte] },
+    { id: 'copy-quiet', book_id: 'book-quiet', holder_hero_id: HERO.toivo, instance_id: 'b2000000-0000-4000-8000-000000000008', first_read_by: [] },
+  ],
+  letters: [
+    {
+      id: 'letter-test',
+      from_label: 'Контора',
+      title: 'Пробная записка',
+      body: 'Это видите только вы. Чужому герою и гостю текста нет. Мастер видит, прочитана ли она.',
+      created_at: '2026-11-04T08:00:00.000Z',
+    },
+  ],
+  letter_recipients: [{ letter_id: 'letter-test', hero_id: HERO.rimte, read_at: null, holder: true }],
   sessions: [
     {
       id: 's1000000-0000-4000-8000-000000000001',

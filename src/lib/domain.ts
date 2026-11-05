@@ -1,4 +1,5 @@
 import { writeAudit } from './audit';
+import { moveHolders } from './books';
 import { assertPerkRequest } from './constellation';
 import { DomainError } from './errors';
 import { addQ, mulQ, q, type Q } from './rational';
@@ -613,6 +614,7 @@ export function decideTransfer(
   const inst = next.item_instances.find((row) => row.id === transfer.instance_id);
   if (!inst) throw new DomainError('Вещи уже нет.');
   if (accept) {
+    moveHolders(next, inst.id, transfer.to_hero, now);
     inst.owner_hero_id = transfer.to_hero;
     mergeIntoBag(next, inst, now);
     transfer.status = 'done';
