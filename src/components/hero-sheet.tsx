@@ -235,6 +235,7 @@ export default function HeroSheet({ slug }: { slug: string }) {
           {tab === 'perks' && (
             <div class="panel">
               <div class="ptitle">Перки</div>
+              <p><a class="btn" href={href(`/hodoki/${hero.slug}/nebo`)}>Созвездие навыков</a></p>
               <PerkList perks={perks} pending={pending} gm={gm} editable={editable} storeDecide={(id, accept, comment) => run(() => store.decideRequest(id, accept, comment), accept ? 'Принято' : 'Отклонено')} onWithdraw={(id) => run(() => store.withdrawRequest(id), 'Заявку отозвали')} />
               {editable && (
                 <form

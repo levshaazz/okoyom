@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { HERO } from '../data/seed';
 import { openSwitcher } from '../lib/browser-store';
+import { unreadCount } from '../lib/books';
 import { gmPendingCount, pendingCountForHero } from '../lib/domain';
 import { href } from '../lib/paths';
 import { GUEST } from '../lib/store';
@@ -49,6 +50,7 @@ export default function Chrome({ page }: Props) {
   const hero = world?.heroes.find((row) => row.id === view.heroId) ?? null;
   const pending =
     world && hero ? pendingCountForHero(world, hero.id) : world && gmChrome ? gmPendingCount(world) : 0;
+  const mail = world && hero ? unreadCount(world, hero.id) : 0;
 
   useEffect(() => {
     const open = () => dialog.current?.showModal();
@@ -105,9 +107,10 @@ export default function Chrome({ page }: Props) {
                   <i />
                   локально
                 </span>
-                <span class="bell hide-sm" title="Записки появятся вместе с сервером">
+                <a class="bell" href={href('/zapiski')} title={mail ? `Непрочитанных записок: ${mail}` : 'Записки'}>
                   ✉
-                </span>
+                  {mail > 0 && <b class="mb">{mail}</b>}
+                </a>
                 <button type="button" class="who hide-sm" onClick={() => openSwitcher()}>
                   {hero?.name ?? 'Герой'}
                 </button>

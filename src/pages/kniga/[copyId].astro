@@ -1,0 +1,15 @@
+---
+import Base from '../../layouts/Base.astro';
+import BookReader from '../../components/book-reader';
+import { createSeedWorld } from '../../data/seed';
+
+export function getStaticPaths() {
+  return createSeedWorld().book_copies.map((copy) => ({ params: { copyId: copy.id } }));
+}
+
+const { copyId } = Astro.params;
+---
+
+<Base title="Книга · Окоём" page="biblioteka">
+  <BookReader client:load copyId={copyId!} />
+</Base>

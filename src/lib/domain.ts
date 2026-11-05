@@ -1,4 +1,6 @@
 import { writeAudit } from './audit';
+import { moveHolders } from './books';
+import { assertPerkRequest } from './constellation';
 import { grantBoon, refundCraft, resolveCraft } from './craft';
 import { DomainError } from './errors';
 import { addQ, mulQ, q, type Q } from './rational';
@@ -235,6 +237,7 @@ export function queuePerk(
   ) {
     throw new DomainError('Заявка на этот перк уже ждёт.');
   }
+  assertPerkRequest(world, heroId, name, skill);
   const next = structuredClone(world);
   next.change_requests.push({
     id: meta.id,
@@ -636,6 +639,7 @@ export function decideTransfer(
   const inst = next.item_instances.find((row) => row.id === transfer.instance_id);
   if (!inst) throw new DomainError('Вещи уже нет.');
   if (accept) {
+    moveHolders(next, inst.id, transfer.to_hero, now);
     inst.owner_hero_id = transfer.to_hero;
     mergeIntoBag(next, inst, now);
     transfer.status = 'done';

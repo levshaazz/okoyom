@@ -1,10 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { GmLetters } from '../../components/letters';
 ---
 
 <Base title="Записки · Мастерская" page="zapiski">
-  <div class="page stub">
-    <h1>Записки</h1>
-    <p>Письмо выбранным героям появится с сервером. В пробном срезе текста записок нет — даже найденная в трюме записка на листе без тела.</p>
-  </div>
+  <GmLetters client:load />
 </Base>
