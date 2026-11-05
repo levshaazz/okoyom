@@ -1,0 +1,15 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Constellation from '../../../components/constellation';
+import { createSeedWorld } from '../../../data/seed';
+
+export function getStaticPaths() {
+  return createSeedWorld().heroes.map((hero) => ({ params: { slug: hero.slug } }));
+}
+
+const { slug } = Astro.params;
+---
+
+<Base title="Созвездие · Окоём" page="list">
+  <Constellation client:load slug={slug!} />
+</Base>

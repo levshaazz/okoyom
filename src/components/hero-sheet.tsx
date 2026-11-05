@@ -235,6 +235,7 @@ export default function HeroSheet({ slug }: { slug: string }) {
           {tab === 'perks' && (
             <div class="panel">
               <div class="ptitle">Перки</div>
+              <p><a class="btn" href={href(`/hodoki/${hero.slug}/nebo`)}>Созвездие навыков</a></p>
               <PerkList perks={perks} pending={pending} gm={gm} editable={editable} storeDecide={(id, accept, comment) => run(() => store.decideRequest(id, accept, comment), accept ? 'Принято' : 'Отклонено')} onWithdraw={(id) => run(() => store.withdrawRequest(id), 'Заявку отозвали')} />
               {editable && (
                 <form
@@ -288,7 +289,8 @@ export default function HeroSheet({ slug }: { slug: string }) {
           {tab === 'craft' && (
             <div class="panel">
               <div class="ptitle">Ремесло</div>
-              <p>Рецепты, пробы и даунтайм появятся отдельным срезом. Опыт, который уже ждёт мастера, виден в сумке и в очереди.</p>
+              <p>Проба, эксперимент, горн и стол чар. Результат ждёт мастера и падает в сумку.</p>
+              <p><a class="btn" href={href(`/hodoki/${hero.slug}/verstak`)}>Открыть верстак</a></p>
               {pending.filter((row) => row.kind === 'craft').map((row) => (
                 <p key={row.id} class="pend small">{row.summary} · ждёт мастера</p>
               ))}

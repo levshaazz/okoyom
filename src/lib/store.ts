@@ -21,7 +21,9 @@ import {
   withdrawRequest,
   withdrawTransfer,
 } from './domain';
+import { markLetterRead, openBook, sendLetter } from './books';
 import type { LearnedSpell } from './combat';
+import { queueCraft, type CraftOrder } from './craft';
 import type { HandFill, HandSide, Session, WikiVisibility, World } from './types';
 import { SEED_REVISION } from './types';
 import {
@@ -61,11 +63,15 @@ export interface DataStore {
   useItem(instanceId: string): Promise<string>;
   grantItem(heroId: string, itemId: string, qty: number): Promise<void>;
   saveNote(heroId: string, body: string): Promise<void>;
+  openBook(copyId: string): Promise<{ applied: string | null; pages: { n: number; body: string }[] }>;
+  sendLetter(input: { title: string; body: string; from: string; heroIds: string[]; asItem: boolean }): Promise<void>;
+  markLetterRead(letterId: string): Promise<void>;
   setHand(heroId: string, side: HandSide, fill: HandFill): Promise<void>;
   saveLoadout(heroId: string, name: string): Promise<void>;
   applyLoadout(heroId: string, loadoutId: string): Promise<void>;
   deleteLoadout(heroId: string, loadoutId: string): Promise<void>;
   learnSpellTome(instanceId: string): Promise<{ message: string; learned: LearnedSpell | null }>;
+  requestCraft(heroId: string, order: CraftOrder): Promise<void>;
   rollbackEvent(eventId: string): Promise<void>;
   confirmEvent(eventId: string): Promise<void>;
   /**
@@ -325,6 +331,28 @@ export class CampaignStore implements DataStore {
   async removeWikiMargin(id: string): Promise<void> {
     await this.ready();
     await this.commit(removeWikiMargin(this.world, this.session, id));
+  }
+
+  async requestCraft(heroId: string, order: CraftOrder): Promise<void> {
+    await this.ready();
+    await this.commit(queueCraft(this.world, this.session, heroId, order, this.meta()));
+  }
+
+  async openBook(copyId: string): Promise<{ applied: string | null; pages: { n: number; body: string }[] }> {
+    await this.ready();
+    const result = openBook(this.world, this.session, copyId, this.meta());
+    if (result.changed) await this.commit(result.world);
+    return { applied: result.applied, pages: result.pages.map((page) => ({ n: page.n, body: page.body })) };
+  }
+
+  async sendLetter(input: { title: string; body: string; from: string; heroIds: string[]; asItem: boolean }): Promise<void> {
+    await this.ready();
+    await this.commit(sendLetter(this.world, this.session, input, this.meta()));
+  }
+
+  async markLetterRead(letterId: string): Promise<void> {
+    await this.ready();
+    await this.commit(markLetterRead(this.world, this.session, letterId, this.meta()));
   }
 }
 

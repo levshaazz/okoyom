@@ -271,7 +271,41 @@ tr.flagged td { background: rgba(196, 69, 59, 0.1); }
   background: var(--ok);
   box-shadow: 0 0 6px var(--ok);
 }
-.bell { position: relative; color: var(--text-dim); font-size: 17px; background: none; border: 0; }
+.bell { position: relative; color: var(--text-dim); font-size: 17px; background: none; border: 0; text-decoration: none; padding: 0 6px; }
+.bell .mb { position: absolute; top: -6px; right: -4px; }
+.book-room { padding: 16px; display: grid; gap: 12px; }
+.book-bar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.book-bar h1 { margin: 0; font-size: 28px; }
+.book-spread { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 420px; }
+.book-spread.one { grid-template-columns: 1fr; }
+.parchment {
+  background: var(--parch, #efe6d2);
+  color: var(--ink, #2a2118);
+  padding: 36px 32px 28px;
+  min-height: 380px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  box-shadow: inset 0 0 40px rgba(80, 50, 20, 0.12);
+}
+.book-spread .parchment:first-child { border-radius: 6px 0 0 6px; border-right: 8px solid #c4b498; }
+.book-spread .parchment:last-child { border-radius: 0 6px 6px 0; }
+.book-spread.one .parchment { border-radius: 6px; border-right: 0; }
+.parchment h2 { font-family: "EB Garamond", serif; margin: 0; }
+.parchment p { font-family: "EB Garamond", serif; font-size: 20px; line-height: 1.45; margin: 0; }
+.page-no { justify-self: center; font-size: 13px; letter-spacing: 0.12em; }
+.book-turn { display: flex; gap: 8px; }
+.book-gain { justify-self: start; }
+.note-sheet { max-width: 520px; border-radius: 4px; }
+.plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.form { display: grid; gap: 10px; max-width: 640px; }
+.form input, .form textarea { width: 100%; background: #14181d; color: inherit; border: 1px solid #333; padding: 8px; font: inherit; }
+.form textarea { min-height: 140px; }
+@media (max-width: 800px) {
+  .book-spread { grid-template-columns: 1fr; }
+  .book-spread .parchment:first-child { border-right: 0; border-radius: 6px; }
+  .parchment { min-height: 0; padding: 24px 18px; }
+}
 .top.gmtop {
   background: linear-gradient(#2a1412, #160c0b);
   border-bottom: 2px solid var(--wax);
@@ -1299,3 +1333,18 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
   .wiki-search input { font-size: 17px; }
   .wiki-side { order: 2; }
 }
+.sky-page { height: calc(100vh - 58px); display: flex; flex-direction: column; overflow: hidden; background: radial-gradient(ellipse at 50% 20%, #1a2230, #07080c 70%); }
+.sky-bar, .skill-picks, .sky-caption { padding: 8px 16px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.skill-picks { max-height: 92px; overflow: auto; }
+.sky { flex: 1; width: 100%; min-height: 0; touch-action: none; cursor: grab; }
+.sky-line { stroke: rgba(217, 181, 108, 0.45); stroke-width: 1.4; }
+.dust { fill: rgba(236, 230, 214, 0.35); }
+.star circle { fill: #141820; stroke: var(--rim-dim); stroke-width: 1.5; }
+.star.taken circle { fill: #d9b56c; stroke: #f3eee3; }
+.star.next.open circle { fill: #3a3020; stroke: var(--gold); cursor: pointer; }
+.star.next:not(.open) circle { fill: #1c2128; stroke: #5d5848; }
+.star.fog circle { fill: transparent; stroke: rgba(163, 156, 138, 0.35); }
+.star.pending circle { stroke-dasharray: 3 2; stroke: var(--pending); }
+.star text { fill: var(--salt); font-family: "EB Garamond", serif; font-size: 15px; }
+.star text.need { fill: var(--text-dim); font-size: 12px; }
+.school-label { fill: var(--gold); font-family: "Alegreya SC", serif; font-size: 14px; letter-spacing: 0.08em; }

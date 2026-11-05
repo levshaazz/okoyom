@@ -121,7 +121,7 @@ export interface SpellRow {
 
 export interface KnowledgeRow {
   hero_id: string;
-  kind: 'ingredient_prop' | 'recipe' | 'blueprint' | 'language';
+  kind: 'ingredient_prop' | 'recipe' | 'blueprint' | 'language' | 'charm' | 'barren' | 'boon';
   ref: string;
   detail: string;
 }
@@ -387,9 +387,51 @@ export interface World {
   wiki_blocks: WikiBlock[];
   wiki_grants: WikiGrant[];
   wiki_margins: WikiMargin[];
+  books: Book[];
+  book_pages: BookPage[];
+  book_copies: BookCopy[];
+  letters: Letter[];
+  letter_recipients: LetterRecipient[];
 }
 
-export const SEED_REVISION = 3;
+export const SEED_REVISION = 5;
+
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  /** Обучающая книга: бонус один раз первому прочтению держателя. */
+  skill_bonus: { skill: string; amount: number } | null;
+}
+
+export interface BookPage {
+  book_id: string;
+  n: number;
+  body: string;
+}
+
+export interface BookCopy {
+  id: string;
+  book_id: string;
+  holder_hero_id: string;
+  instance_id: string;
+  first_read_by: string[];
+}
+
+export interface Letter {
+  id: string;
+  from_label: string;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
+export interface LetterRecipient {
+  letter_id: string;
+  hero_id: string;
+  read_at: string | null;
+  holder: boolean;
+}
 
 export interface OpMeta {
   id: string;
