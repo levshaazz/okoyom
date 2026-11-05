@@ -175,7 +175,7 @@ export default function Inventory({ slug }: { slug: string }) {
                         setTarget(others[0]?.id ?? '');
                       }}
                       onDrop={() => run(() => store.requestDrop(inst.id), 'Выброс ждёт мастера')}
-                      onSmith={() => notice.flash('Кузня откроется вместе с ремеслом.')}
+                      onSmith={() => { window.location.assign(href(`/hodoki/${slug}/verstak`)); }}
                     />
                   ))}
                   {extra.map((row) => (
@@ -234,7 +234,7 @@ export default function Inventory({ slug }: { slug: string }) {
               setQty(1);
               setTarget(others[0]?.id ?? '');
             }}
-            onSmith={() => notice.flash('Кузня откроется вместе с ремеслом.')}
+            onSmith={() => { window.location.assign(href(`/hodoki/${slug}/verstak`)); }}
             onWithdrawRequest={(id) => run(() => store.withdrawRequest(id), 'Заявку отозвали')}
             onWithdrawTransfer={(id) => run(() => store.withdrawTransfer(id), 'Передачу отозвали')}
             onDecide={(id, accept, comment) => run(() => store.decideRequest(id, accept, comment), accept ? 'Принято' : 'Отклонено')}
@@ -533,6 +533,9 @@ function Card({
           <div class="actions">
             {item.kind === 'spell_tome' && (
               <button type="button" class="btn pri" onClick={onLearn}>Прочесть и выучить</button>
+            )}
+            {item.kind === 'book' && world.book_copies.some((row) => row.instance_id === inst.id) && (
+              <a class="btn pri" href={href(`/kniga/${world.book_copies.find((row) => row.instance_id === inst.id)!.id}`)}>Читать</a>
             )}
             {wieldOf(item) && wieldOf(item) !== 'shield' && !occupies(item) && (
               <>

@@ -21,7 +21,23 @@ import {
   withdrawRequest,
   withdrawTransfer,
 } from './domain';
+import { markLetterRead, openBook, sendLetter } from './books';
+import {
+  addChronicleMemory,
+  advanceWorldClock,
+  removeChronicleEntry,
+  removeChronicleMemory,
+  saveChronicleEntry,
+  saveChroniclePart,
+  saveOmen,
+  saveWorldClock,
+  type ChronicleEntryInput,
+  type ChroniclePartInput,
+  type OmenInput,
+  type WorldClockInput,
+} from './chronicle';
 import type { LearnedSpell } from './combat';
+import { queueCraft, type CraftOrder } from './craft';
 import {
   addMapPin,
   moveMarker,
@@ -32,8 +48,22 @@ import {
   setMapImage,
   type MarkerInput,
 } from './map';
-import type { HandFill, HandSide, Session, World } from './types';
+import type { HandFill, HandSide, Session, WikiVisibility, World } from './types';
 import { SEED_REVISION } from './types';
+import {
+  addWikiMargin,
+  moveWikiBlock,
+  removeWikiBlock,
+  removeWikiPage,
+  saveWikiBlock,
+  saveWikiPage,
+  setWikiVisibility,
+  removeWikiMargin,
+  type WikiBlockInput,
+  type WikiMarginInput,
+  type WikiPageInput,
+  type WikiTarget,
+} from './wiki';
 
 export const GUEST: Session = { role: 'guest', heroId: null, preview: false };
 
@@ -57,11 +87,15 @@ export interface DataStore {
   useItem(instanceId: string): Promise<string>;
   grantItem(heroId: string, itemId: string, qty: number): Promise<void>;
   saveNote(heroId: string, body: string): Promise<void>;
+  openBook(copyId: string): Promise<{ applied: string | null; pages: { n: number; body: string }[] }>;
+  sendLetter(input: { title: string; body: string; from: string; heroIds: string[]; asItem: boolean }): Promise<void>;
+  markLetterRead(letterId: string): Promise<void>;
   setHand(heroId: string, side: HandSide, fill: HandFill): Promise<void>;
   saveLoadout(heroId: string, name: string): Promise<void>;
   applyLoadout(heroId: string, loadoutId: string): Promise<void>;
   deleteLoadout(heroId: string, loadoutId: string): Promise<void>;
   learnSpellTome(instanceId: string): Promise<{ message: string; learned: LearnedSpell | null }>;
+  requestCraft(heroId: string, order: CraftOrder): Promise<void>;
   rollbackEvent(eventId: string): Promise<void>;
   confirmEvent(eventId: string): Promise<void>;
   /**
@@ -76,6 +110,32 @@ export interface DataStore {
   addMapPin(x: number, y: number, label: string): Promise<void>;
   removeMapPin(id: string): Promise<void>;
   setMapImage(imageData: string | null): Promise<void>;
+  /**
+   * Летопись. Позже — RPC мастера для записей и private.world_clocks.
+   * Воспоминание игрока — insert под RLS на видимую запись.
+   * TODO(supabase): части «только участникам» и часы мира не отдаются SELECT-ом.
+   */
+  saveChronicleEntry(input: ChronicleEntryInput): Promise<void>;
+  saveChroniclePart(input: ChroniclePartInput): Promise<void>;
+  removeChronicleEntry(id: string): Promise<void>;
+  addChronicleMemory(entryId: string, body: string): Promise<void>;
+  removeChronicleMemory(id: string): Promise<void>;
+  saveWorldClock(input: WorldClockInput): Promise<void>;
+  advanceWorldClock(clockId: string): Promise<void>;
+  saveOmen(input: OmenInput): Promise<void>;
+  /**
+   * Вики. Позже: gm_reveal_block, сохранение страниц — RPC мастера;
+   * заметки игрока — insert в wiki_margins под RLS (личные видит автор и мастер).
+   * TODO(supabase): выборка страниц и поиска идёт под RLS, скрытый раздел не приходит клиенту.
+   */
+  saveWikiPage(input: WikiPageInput): Promise<void>;
+  saveWikiBlock(input: WikiBlockInput): Promise<void>;
+  removeWikiPage(slug: string): Promise<void>;
+  removeWikiBlock(id: string): Promise<void>;
+  moveWikiBlock(id: string, dir: -1 | 1): Promise<void>;
+  setWikiVisibility(target: WikiTarget, visibility: WikiVisibility, heroIds: string[]): Promise<void>;
+  addWikiMargin(input: WikiMarginInput): Promise<void>;
+  removeWikiMargin(id: string): Promise<void>;
 }
 
 export interface StoreHooks {
@@ -320,6 +380,108 @@ export class CampaignStore implements DataStore {
   async setMapImage(imageData: string | null): Promise<void> {
     await this.ready();
     await this.commit(setMapImage(this.world, this.session, imageData));
+  }
+
+  async saveChronicleEntry(input: ChronicleEntryInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveChronicleEntry(this.world, this.session, input, this.meta()));
+  }
+
+  async saveChroniclePart(input: ChroniclePartInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveChroniclePart(this.world, this.session, input, this.meta()));
+  }
+
+  async removeChronicleEntry(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeChronicleEntry(this.world, this.session, id));
+  }
+
+  async addChronicleMemory(entryId: string, body: string): Promise<void> {
+    await this.ready();
+    await this.commit(addChronicleMemory(this.world, this.session, entryId, body, this.meta()));
+  }
+
+  async removeChronicleMemory(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeChronicleMemory(this.world, this.session, id));
+  }
+
+  async saveWorldClock(input: WorldClockInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveWorldClock(this.world, this.session, input, this.meta()));
+  }
+
+  async advanceWorldClock(clockId: string): Promise<void> {
+    await this.ready();
+    await this.commit(advanceWorldClock(this.world, this.session, clockId));
+  }
+
+  async saveOmen(input: OmenInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveOmen(this.world, this.session, input, this.meta()));
+  }
+
+  async saveWikiPage(input: WikiPageInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveWikiPage(this.world, this.session, input, this.hooks.now()));
+  }
+
+  async saveWikiBlock(input: WikiBlockInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveWikiBlock(this.world, this.session, input, this.meta()));
+  }
+
+  async removeWikiPage(slug: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeWikiPage(this.world, this.session, slug));
+  }
+
+  async removeWikiBlock(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeWikiBlock(this.world, this.session, id));
+  }
+
+  async moveWikiBlock(id: string, dir: -1 | 1): Promise<void> {
+    await this.ready();
+    await this.commit(moveWikiBlock(this.world, this.session, id, dir));
+  }
+
+  async setWikiVisibility(target: WikiTarget, visibility: WikiVisibility, heroIds: string[]): Promise<void> {
+    await this.ready();
+    await this.commit(setWikiVisibility(this.world, this.session, target, visibility, heroIds, this.hooks.now()));
+  }
+
+  async addWikiMargin(input: WikiMarginInput): Promise<void> {
+    await this.ready();
+    await this.commit(addWikiMargin(this.world, this.session, input, this.meta()));
+  }
+
+  async removeWikiMargin(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeWikiMargin(this.world, this.session, id));
+  }
+
+  async requestCraft(heroId: string, order: CraftOrder): Promise<void> {
+    await this.ready();
+    await this.commit(queueCraft(this.world, this.session, heroId, order, this.meta()));
+  }
+
+  async openBook(copyId: string): Promise<{ applied: string | null; pages: { n: number; body: string }[] }> {
+    await this.ready();
+    const result = openBook(this.world, this.session, copyId, this.meta());
+    if (result.changed) await this.commit(result.world);
+    return { applied: result.applied, pages: result.pages.map((page) => ({ n: page.n, body: page.body })) };
+  }
+
+  async sendLetter(input: { title: string; body: string; from: string; heroIds: string[]; asItem: boolean }): Promise<void> {
+    await this.ready();
+    await this.commit(sendLetter(this.world, this.session, input, this.meta()));
+  }
+
+  async markLetterRead(letterId: string): Promise<void> {
+    await this.ready();
+    await this.commit(markLetterRead(this.world, this.session, letterId, this.meta()));
   }
 }
 

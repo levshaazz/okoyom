@@ -271,7 +271,41 @@ tr.flagged td { background: rgba(196, 69, 59, 0.1); }
   background: var(--ok);
   box-shadow: 0 0 6px var(--ok);
 }
-.bell { position: relative; color: var(--text-dim); font-size: 17px; background: none; border: 0; }
+.bell { position: relative; color: var(--text-dim); font-size: 17px; background: none; border: 0; text-decoration: none; padding: 0 6px; }
+.bell .mb { position: absolute; top: -6px; right: -4px; }
+.book-room { padding: 16px; display: grid; gap: 12px; }
+.book-bar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.book-bar h1 { margin: 0; font-size: 28px; }
+.book-spread { display: grid; grid-template-columns: 1fr 1fr; gap: 0; min-height: 420px; }
+.book-spread.one { grid-template-columns: 1fr; }
+.parchment {
+  background: var(--parch, #efe6d2);
+  color: var(--ink, #2a2118);
+  padding: 36px 32px 28px;
+  min-height: 380px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  box-shadow: inset 0 0 40px rgba(80, 50, 20, 0.12);
+}
+.book-spread .parchment:first-child { border-radius: 6px 0 0 6px; border-right: 8px solid #c4b498; }
+.book-spread .parchment:last-child { border-radius: 0 6px 6px 0; }
+.book-spread.one .parchment { border-radius: 6px; border-right: 0; }
+.parchment h2 { font-family: "EB Garamond", serif; margin: 0; }
+.parchment p { font-family: "EB Garamond", serif; font-size: 20px; line-height: 1.45; margin: 0; }
+.page-no { justify-self: center; font-size: 13px; letter-spacing: 0.12em; }
+.book-turn { display: flex; gap: 8px; }
+.book-gain { justify-self: start; }
+.note-sheet { max-width: 520px; border-radius: 4px; }
+.plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.form { display: grid; gap: 10px; max-width: 640px; }
+.form input, .form textarea { width: 100%; background: #14181d; color: inherit; border: 1px solid #333; padding: 8px; font: inherit; }
+.form textarea { min-height: 140px; }
+@media (max-width: 800px) {
+  .book-spread { grid-template-columns: 1fr; }
+  .book-spread .parchment:first-child { border-right: 0; border-radius: 6px; }
+  .parchment { min-height: 0; padding: 24px 18px; }
+}
 .top.gmtop {
   background: linear-gradient(#2a1412, #160c0b);
   border-bottom: 2px solid var(--wax);
@@ -1228,3 +1262,285 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
   .map-zoom { left: auto; right: 8px; top: 8px; }
   .map-north { right: 8px; bottom: 8px; }
 }
+
+/* Летопись */
+.chronicle-head { margin-bottom: 8px; }
+.chronicle-head h1 { font-size: 40px; }
+.chronicle-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; margin-top: 8px; }
+.tl { display: grid; }
+.ev { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; position: relative; margin-bottom: 18px; }
+.ev::before {
+  content: "";
+  position: absolute;
+  left: 151px;
+  top: 8px;
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  background: var(--gold);
+  border: 1px solid #000;
+  z-index: 1;
+}
+.ev.fall::before { background: var(--danger); }
+.ev::after {
+  content: "";
+  position: absolute;
+  left: 155px;
+  top: 20px;
+  bottom: -18px;
+  width: 1px;
+  background: var(--rim-dim);
+}
+.dt { text-align: right; padding-top: 2px; }
+.dt b { display: block; font-family: "Cormorant SC", serif; font-size: 18px; color: var(--salt); letter-spacing: 0.06em; font-weight: 600; }
+.dt span { font-size: 13px; color: var(--text-dim); }
+.ev .body { padding-left: 18px; }
+.ev.big .body { border: 1px solid var(--rim-dim); padding: 12px 18px; background: rgba(12, 14, 17, 0.8); }
+.et { font-family: "Cormorant Garamond", serif; font-weight: 600; font-size: 28px; color: var(--salt); line-height: 1.15; letter-spacing: 0.04em; margin: 4px 0 8px; }
+.chronicle-prose { color: #e2dccb; font-size: 17px; line-height: 1.5; }
+.chronicle-prose p { margin: 0 0 8px; }
+.fallen-line { color: #e7a39d; margin: 8px 0; }
+.veil { border: 1px dashed var(--rim-dim); color: var(--text-dim); padding: 8px 12px; font-size: 15px; }
+.memories { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.memories li { border-left: 2px solid var(--rim-dim); padding-left: 10px; }
+.memories p { margin: 2px 0; }
+.memory-form, .clock-card { display: grid; gap: 8px; margin-top: 10px; }
+.memory-form textarea, .chronicle-form textarea {
+  width: 100%;
+  background: #101318;
+  border: 1px solid var(--rim-dim);
+  color: var(--text);
+  padding: 8px 10px;
+  resize: vertical;
+}
+.chronicle-form { max-width: none; margin-top: 12px; }
+.chip-row, .check-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip {
+  font-family: "Alegreya SC", serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--rim-dim);
+  color: var(--text-dim);
+  padding: 3px 9px;
+  background: transparent;
+}
+.chip.on { border-color: var(--gold); color: var(--gold); }
+.check { display: inline-flex; gap: 6px; align-items: center; }
+.clock-card .pips { margin: 4px 0; }
+@media (max-width: 900px) {
+  .chronicle-layout { grid-template-columns: 1fr; }
+  .chronicle-head h1 { font-size: 32px; }
+  .ev { grid-template-columns: 1fr; gap: 6px; }
+  .ev::before, .ev::after { display: none; }
+  .dt { text-align: left; }
+  .ev .body, .ev.big .body { padding-left: 0; }
+  .et { font-size: 24px; }
+}
+
+/* Вики */
+.wiki-head { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-bottom: 18px; }
+.wiki-head h1 { font-size: 40px; }
+.wiki-counts { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+.wiki-home { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+.wiki-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--rim);
+  padding: 10px 14px;
+  background: #0f1216;
+}
+.wiki-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 20px;
+  color: var(--salt);
+}
+.wiki-search input:focus { outline: none; }
+.srch-ic { color: var(--gold); font-size: 20px; }
+.wiki-hits { display: grid; gap: 8px; margin-top: 12px; }
+.wiki-hit, .wiki-catalog a {
+  display: grid;
+  gap: 2px;
+  padding: 8px 14px;
+  border-left: 2px solid var(--rim-dim);
+  background: rgba(255, 255, 255, 0.015);
+}
+.wiki-hit.ru { border-left-color: var(--rumor); }
+.wiki-hit-title {
+  font-family: "Cormorant Garamond", serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--salt);
+  line-height: 1.2;
+}
+.wiki-hit mark, .wiki-prose mark { background: rgba(217, 181, 108, 0.22); color: var(--gold); }
+.wiki-catalog { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; }
+.wiki-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wiki-cats button {
+  border: 1px solid var(--rim-dim);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(12, 14, 17, 0.8);
+  color: inherit;
+  width: 100%;
+}
+.wiki-cats button.on { border-color: var(--gold); }
+.wiki-cats b { font-family: "Alegreya SC", serif; font-weight: 400; font-size: 14px; letter-spacing: 0.04em; color: #e5dfcf; }
+.wiki-cats span { color: var(--gold); }
+.rumor-ink { color: var(--rumor); }
+.wiki-article {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr) 300px;
+  gap: 26px;
+  align-items: start;
+}
+.wiki-toc .toc { display: grid; gap: 2px; margin-top: 8px; }
+.wiki-toc .toc a, .wiki-toc .toc button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 0;
+  color: #cfc8b6;
+  background: none;
+  border: 0;
+  font: inherit;
+}
+.wiki-toc .toc .on, .wiki-toc .toc a.on { color: var(--gold); border-left: 2px solid var(--gold); padding-left: 8px; }
+.wiki-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin: 4px 0 8px; }
+.wiki-title h1 { font-size: 46px; }
+.wiki-endonym { margin: 0; }
+.wiki-endonym .sc { font-size: 22px; }
+.wiki-seal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--rim-dim);
+  background: rgba(217, 181, 108, 0.05);
+}
+.wiki-seal.ok { border-color: #3d5a3a; background: rgba(127, 178, 122, 0.07); }
+.wiki-seal b { font-family: "Alegreya SC", serif; font-weight: 400; letter-spacing: 0.06em; color: var(--gold); }
+.wiki-seal.ok b { color: var(--ok); }
+.seal {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3a3020;
+  color: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.wiki-seal.ok .seal { background: #3d6b3a; color: #dff0dc; }
+.wiki-prose { margin-top: 16px; color: #e7e1d1; font-size: 18px; line-height: 1.55; }
+.wiki-prose h2 { font-size: 22px; margin: 16px 0 6px; border-bottom: 1px solid var(--rim-dim); padding-bottom: 3px; }
+.wiki-prose a, .wiki-box a { color: var(--gold); border-bottom: 1px dotted var(--gold); }
+.wiki-prose p { margin: 0 0 12px; }
+.wiki-prose ul { margin: 0 0 12px; padding-left: 18px; }
+.wiki-block.secret { border-left: 2px solid var(--wax); padding-left: 10px; margin-bottom: 8px; }
+.wiki-reveal { margin: 8px 0 12px; }
+.wiki-vis { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: "Alegreya SC", serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--rim-dim);
+  color: var(--text-dim);
+  padding: 3px 9px;
+  background: transparent;
+}
+.chip.on { border-color: var(--gold); color: var(--gold); background: rgba(217, 181, 108, 0.08); }
+.wiki-heroes { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 8px; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 15px; }
+.wiki-rumor, .wiki-note {
+  border: 1px solid #4a5d70;
+  border-left: 3px solid var(--rumor);
+  padding: 9px 14px;
+  margin: 10px 0;
+  background: rgba(157, 179, 201, 0.06);
+  color: #c6d3df;
+}
+.wiki-note { border-color: var(--rim-dim); border-left-color: var(--gold); color: var(--text); background: transparent; }
+.wiki-rumor .xs, .wiki-note .xs { letter-spacing: 0.08em; }
+.wiki-rumor .xs { color: var(--rumor); }
+.wiki-margin-form, .wiki-block-edit { display: grid; gap: 8px; margin-top: 12px; }
+.wiki-margin-form textarea, .wiki-block-edit textarea, .wiki-form textarea {
+  width: 100%;
+  min-height: 88px;
+  background: #101318;
+  border: 1px solid var(--rim-dim);
+  color: var(--text);
+  padding: 8px 10px;
+  resize: vertical;
+}
+.wiki-card-title { font-size: 26px; text-align: center; }
+.center { text-align: center; }
+.wiki-box { width: 100%; border-collapse: collapse; }
+.wiki-box td { padding: 5px 6px; vertical-align: top; font-size: 14px; }
+.wiki-box td:first-child { color: var(--text-dim); width: 108px; font-family: "Alegreya SC", serif; letter-spacing: 0.04em; }
+.wiki-desk { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 18px; align-items: start; }
+.wiki-desk .form, .wiki-form { max-width: none; }
+.wiki-desk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.wiki-desk-list button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  color: inherit;
+  padding: 6px 8px;
+  display: grid;
+}
+.wiki-desk-list button.on { border-left-color: var(--gold); color: var(--gold); }
+.wiki-block-edit select, .wiki-form select { max-width: 220px; }
+
+@media (max-width: 1100px) {
+  .wiki-article { grid-template-columns: minmax(0, 1fr) 260px; }
+  .wiki-toc {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .wiki-toc .toc { display: flex; gap: 12px; flex: none; margin-top: 0; }
+  .wiki-toc .toc a,
+  .wiki-toc .toc button,
+  .wiki-toc > a,
+  .wiki-toc .asc { white-space: nowrap; flex: none; }
+  .wiki-toc .rule { display: none; }
+  .wiki-home { grid-template-columns: 1fr; }
+}
+@media (max-width: 800px) {
+  .wiki-head h1, .wiki-title h1 { font-size: 32px; }
+  .wiki-counts { margin-left: 0; }
+  .wiki-article, .wiki-desk { grid-template-columns: 1fr; }
+  .wiki-cats { grid-template-columns: 1fr 1fr; }
+  .wiki-search input { font-size: 17px; }
+  .wiki-side { order: 2; }
+}
+.sky-page { height: calc(100vh - 58px); display: flex; flex-direction: column; overflow: hidden; background: radial-gradient(ellipse at 50% 20%, #1a2230, #07080c 70%); }
+.sky-bar, .skill-picks, .sky-caption { padding: 8px 16px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.skill-picks { max-height: 92px; overflow: auto; }
+.sky { flex: 1; width: 100%; min-height: 0; touch-action: none; cursor: grab; }
+.sky-line { stroke: rgba(217, 181, 108, 0.45); stroke-width: 1.4; }
+.dust { fill: rgba(236, 230, 214, 0.35); }
+.star circle { fill: #141820; stroke: var(--rim-dim); stroke-width: 1.5; }
+.star.taken circle { fill: #d9b56c; stroke: #f3eee3; }
+.star.next.open circle { fill: #3a3020; stroke: var(--gold); cursor: pointer; }
+.star.next:not(.open) circle { fill: #1c2128; stroke: #5d5848; }
+.star.fog circle { fill: transparent; stroke: rgba(163, 156, 138, 0.35); }
+.star.pending circle { stroke-dasharray: 3 2; stroke: var(--pending); }
+.star text { fill: var(--salt); font-family: "EB Garamond", serif; font-size: 15px; }
+.star text.need { fill: var(--text-dim); font-size: 12px; }
+.school-label { fill: var(--gold); font-family: "Alegreya SC", serif; font-size: 14px; letter-spacing: 0.08em; }
