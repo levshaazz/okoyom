@@ -1,6 +1,7 @@
 import { writeAudit } from './audit';
 import { moveHolders } from './books';
 import { assertPerkRequest } from './constellation';
+import { grantBoon, refundCraft, resolveCraft } from './craft';
 import { DomainError } from './errors';
 import { addQ, mulQ, q, type Q } from './rational';
 import { isSkillName, xpThreshold } from './skills';
@@ -339,15 +340,23 @@ export function useItem(world: World, actor: Actor, instanceId: string, meta: Op
   requireOwner(actor, inst.owner_hero_id);
   if (inst.location !== 'bag' && inst.location !== 'worn') throw new DomainError('Вещь не под рукой.');
   const item = itemOf(next, inst);
+  const boon = item.props.boon === 'insight' || item.props.boon === 'masters_hand' ? item.props.boon : null;
   const effect = effectOf(item);
-  if (!effect) throw new DomainError('Этим нельзя воспользоваться.');
+  if (!effect && !boon) throw new DomainError('Этим нельзя воспользоваться.');
+  if (boon) grantBoon(next, inst.owner_hero_id, boon);
   const hero = heroById(next, inst.owner_hero_id);
-  const max = effect.stat === 'health' ? hero.health_max : effect.stat === 'magic' ? hero.magic_max : hero.stamina_max;
-  const current = hero[effect.stat];
-  const updated = Math.min(max, current + effect.amount);
-  const patch: Partial<Hero> =
-    effect.stat === 'health' ? { health: updated } : effect.stat === 'magic' ? { magic: updated } : { stamina: updated };
-  Object.assign(hero, touchHero(hero, meta.now, patch));
+  let current = hero.health;
+  let updated = hero.health;
+  let statName = '';
+  if (effect) {
+    const max = effect.stat === 'health' ? hero.health_max : effect.stat === 'magic' ? hero.magic_max : hero.stamina_max;
+    current = hero[effect.stat];
+    updated = Math.min(max, current + effect.amount);
+    const patch: Partial<Hero> =
+      effect.stat === 'health' ? { health: updated } : effect.stat === 'magic' ? { magic: updated } : { stamina: updated };
+    Object.assign(hero, touchHero(hero, meta.now, patch));
+    statName = effect.stat === 'health' ? 'здоровья' : effect.stat === 'magic' ? 'магии' : 'выносливости';
+  }
   const previousQty = inst.qty;
   inst.qty -= 1;
   inst.updated_at = meta.now;
@@ -359,11 +368,13 @@ export function useItem(world: World, actor: Actor, instanceId: string, meta: Op
     hero_id: hero.id,
     action: 'use_item',
     summary: `Использовано «${item.name}»`,
-    before: { [effect.stat]: current, qty: previousQty },
-    after: { [effect.stat]: updated, instanceId, qty: previousQty - 1 },
-    undo: { kind: 'stat', stat: effect.stat, value: current },
+    before: effect ? { [effect.stat]: current, qty: previousQty } : { qty: previousQty },
+    after: effect ? { [effect.stat]: updated, instanceId, qty: previousQty - 1, boon } : { instanceId, qty: previousQty - 1, boon },
+    undo: effect ? { kind: 'stat', stat: effect.stat, value: current } : null,
   });
-  const statName = effect.stat === 'health' ? 'здоровья' : effect.stat === 'magic' ? 'магии' : 'выносливости';
+  if (boon && !effect) {
+    return { world: next, message: boon === 'insight' ? 'Озарение: следующая чара на ступень выше.' : 'Рука мастера: следующее улучшение чуть лучше.' };
+  }
   const gained = updated - current;
   return {
     world: next,
@@ -456,6 +467,7 @@ export function withdrawRequest(world: World, actor: Actor, requestId: string): 
   if (!canEditHero(actor, request.hero_id) && !isGm(actor)) {
     throw new DomainError('Отозвать может только герой.');
   }
+  if (request.kind === 'craft') refundCraft(next, request);
   request.status = 'withdrawn';
   return next;
 }
@@ -517,6 +529,10 @@ function applyApproved(world: World, request: ChangeRequest, now: string): void 
     return;
   }
   if (request.kind === 'craft') {
+    if (typeof request.payload.action === 'string') {
+      resolveCraft(world, request, now);
+      return;
+    }
     const name = String(request.payload.name ?? 'Поделка');
     const kind = (request.payload.kind as ItemKind) ?? 'misc';
     const weight = request.payload.weight as Q | undefined;
@@ -547,6 +563,14 @@ function applyApproved(world: World, request: ChangeRequest, now: string): void 
       notes: null,
       created_at: now,
       updated_at: now,
+    });
+    writeAudit(world, { role: 'gm', heroId: null, preview: false }, { id: `craft-${request.id}`, opId: request.id, now }, {
+      hero_id: request.hero_id,
+      action: 'craft',
+      summary: `Крафт: ${name}`,
+      before: null,
+      after: { granted: [`inst-${request.id}`] },
+      undo: null,
     });
     return;
   }
@@ -587,6 +611,7 @@ export function decideRequest(
   if (!request) throw new DomainError('Заявки нет.');
   if (request.status !== 'pending') throw new DomainError('Заявка уже решена.');
   if (accept) applyApproved(next, request, now);
+  else if (request.kind === 'craft') refundCraft(next, request);
   if (request.kind === 'rumor' && !accept) {
     const rumor = next.rumors.find((row) => row.id === request.payload.rumor_id);
     if (rumor) rumor.status = 'rejected';
