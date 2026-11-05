@@ -1141,6 +1141,80 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
 .pct-99{width:99%}
 .pct-100{width:100%}
 
+/* Летопись */
+.chronicle-head { margin-bottom: 8px; }
+.chronicle-head h1 { font-size: 40px; }
+.chronicle-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; margin-top: 8px; }
+.tl { display: grid; }
+.ev { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; position: relative; margin-bottom: 18px; }
+.ev::before {
+  content: "";
+  position: absolute;
+  left: 151px;
+  top: 8px;
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  background: var(--gold);
+  border: 1px solid #000;
+  z-index: 1;
+}
+.ev.fall::before { background: var(--danger); }
+.ev::after {
+  content: "";
+  position: absolute;
+  left: 155px;
+  top: 20px;
+  bottom: -18px;
+  width: 1px;
+  background: var(--rim-dim);
+}
+.dt { text-align: right; padding-top: 2px; }
+.dt b { display: block; font-family: "Cormorant SC", serif; font-size: 18px; color: var(--salt); letter-spacing: 0.06em; font-weight: 600; }
+.dt span { font-size: 13px; color: var(--text-dim); }
+.ev .body { padding-left: 18px; }
+.ev.big .body { border: 1px solid var(--rim-dim); padding: 12px 18px; background: rgba(12, 14, 17, 0.8); }
+.et { font-family: "Cormorant Garamond", serif; font-weight: 600; font-size: 28px; color: var(--salt); line-height: 1.15; letter-spacing: 0.04em; margin: 4px 0 8px; }
+.chronicle-prose { color: #e2dccb; font-size: 17px; line-height: 1.5; }
+.chronicle-prose p { margin: 0 0 8px; }
+.fallen-line { color: #e7a39d; margin: 8px 0; }
+.veil { border: 1px dashed var(--rim-dim); color: var(--text-dim); padding: 8px 12px; font-size: 15px; }
+.memories { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.memories li { border-left: 2px solid var(--rim-dim); padding-left: 10px; }
+.memories p { margin: 2px 0; }
+.memory-form, .clock-card { display: grid; gap: 8px; margin-top: 10px; }
+.memory-form textarea, .chronicle-form textarea {
+  width: 100%;
+  background: #101318;
+  border: 1px solid var(--rim-dim);
+  color: var(--text);
+  padding: 8px 10px;
+  resize: vertical;
+}
+.chronicle-form { max-width: none; margin-top: 12px; }
+.chip-row, .check-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip {
+  font-family: "Alegreya SC", serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--rim-dim);
+  color: var(--text-dim);
+  padding: 3px 9px;
+  background: transparent;
+}
+.chip.on { border-color: var(--gold); color: var(--gold); }
+.check { display: inline-flex; gap: 6px; align-items: center; }
+.clock-card .pips { margin: 4px 0; }
+@media (max-width: 900px) {
+  .chronicle-layout { grid-template-columns: 1fr; }
+  .chronicle-head h1 { font-size: 32px; }
+  .ev { grid-template-columns: 1fr; gap: 6px; }
+  .ev::before, .ev::after { display: none; }
+  .dt { text-align: left; }
+  .ev .body, .ev.big .body { padding-left: 0; }
+  .et { font-size: 24px; }
+}
+
 /* Вики */
 .wiki-head { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-bottom: 18px; }
 .wiki-head h1 { font-size: 40px; }

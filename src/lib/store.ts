@@ -22,6 +22,20 @@ import {
   withdrawTransfer,
 } from './domain';
 import { markLetterRead, openBook, sendLetter } from './books';
+import {
+  addChronicleMemory,
+  advanceWorldClock,
+  removeChronicleEntry,
+  removeChronicleMemory,
+  saveChronicleEntry,
+  saveChroniclePart,
+  saveOmen,
+  saveWorldClock,
+  type ChronicleEntryInput,
+  type ChroniclePartInput,
+  type OmenInput,
+  type WorldClockInput,
+} from './chronicle';
 import type { LearnedSpell } from './combat';
 import { queueCraft, type CraftOrder } from './craft';
 import type { HandFill, HandSide, Session, WikiVisibility, World } from './types';
@@ -74,6 +88,19 @@ export interface DataStore {
   requestCraft(heroId: string, order: CraftOrder): Promise<void>;
   rollbackEvent(eventId: string): Promise<void>;
   confirmEvent(eventId: string): Promise<void>;
+  /**
+   * Летопись. Позже — RPC мастера для записей и private.world_clocks.
+   * Воспоминание игрока — insert под RLS на видимую запись.
+   * TODO(supabase): части «только участникам» и часы мира не отдаются SELECT-ом.
+   */
+  saveChronicleEntry(input: ChronicleEntryInput): Promise<void>;
+  saveChroniclePart(input: ChroniclePartInput): Promise<void>;
+  removeChronicleEntry(id: string): Promise<void>;
+  addChronicleMemory(entryId: string, body: string): Promise<void>;
+  removeChronicleMemory(id: string): Promise<void>;
+  saveWorldClock(input: WorldClockInput): Promise<void>;
+  advanceWorldClock(clockId: string): Promise<void>;
+  saveOmen(input: OmenInput): Promise<void>;
   /**
    * Вики. Позже: gm_reveal_block, сохранение страниц — RPC мастера;
    * заметки игрока — insert в wiki_margins под RLS (личные видит автор и мастер).
@@ -291,6 +318,46 @@ export class CampaignStore implements DataStore {
   async saveNote(heroId: string, body: string): Promise<void> {
     await this.ready();
     await this.commit(saveNote(this.world, this.session, heroId, body, this.meta()));
+  }
+
+  async saveChronicleEntry(input: ChronicleEntryInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveChronicleEntry(this.world, this.session, input, this.meta()));
+  }
+
+  async saveChroniclePart(input: ChroniclePartInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveChroniclePart(this.world, this.session, input, this.meta()));
+  }
+
+  async removeChronicleEntry(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeChronicleEntry(this.world, this.session, id));
+  }
+
+  async addChronicleMemory(entryId: string, body: string): Promise<void> {
+    await this.ready();
+    await this.commit(addChronicleMemory(this.world, this.session, entryId, body, this.meta()));
+  }
+
+  async removeChronicleMemory(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeChronicleMemory(this.world, this.session, id));
+  }
+
+  async saveWorldClock(input: WorldClockInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveWorldClock(this.world, this.session, input, this.meta()));
+  }
+
+  async advanceWorldClock(clockId: string): Promise<void> {
+    await this.ready();
+    await this.commit(advanceWorldClock(this.world, this.session, clockId));
+  }
+
+  async saveOmen(input: OmenInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveOmen(this.world, this.session, input, this.meta()));
   }
 
   async saveWikiPage(input: WikiPageInput): Promise<void> {
