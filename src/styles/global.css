@@ -1140,3 +1140,18 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
 .pct-98{width:98%}
 .pct-99{width:99%}
 .pct-100{width:100%}
+.sky-page { height: calc(100vh - 58px); display: flex; flex-direction: column; overflow: hidden; background: radial-gradient(ellipse at 50% 20%, #1a2230, #07080c 70%); }
+.sky-bar, .skill-picks, .sky-caption { padding: 8px 16px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.skill-picks { max-height: 92px; overflow: auto; }
+.sky { flex: 1; width: 100%; min-height: 0; touch-action: none; cursor: grab; }
+.sky-line { stroke: rgba(217, 181, 108, 0.45); stroke-width: 1.4; }
+.dust { fill: rgba(236, 230, 214, 0.35); }
+.star circle { fill: #141820; stroke: var(--rim-dim); stroke-width: 1.5; }
+.star.taken circle { fill: #d9b56c; stroke: #f3eee3; }
+.star.next.open circle { fill: #3a3020; stroke: var(--gold); cursor: pointer; }
+.star.next:not(.open) circle { fill: #1c2128; stroke: #5d5848; }
+.star.fog circle { fill: transparent; stroke: rgba(163, 156, 138, 0.35); }
+.star.pending circle { stroke-dasharray: 3 2; stroke: var(--pending); }
+.star text { fill: var(--salt); font-family: "EB Garamond", serif; font-size: 15px; }
+.star text.need { fill: var(--text-dim); font-size: 12px; }
+.school-label { fill: var(--gold); font-family: "Alegreya SC", serif; font-size: 14px; letter-spacing: 0.08em; }

@@ -1,5 +1,6 @@
 import { writeAudit } from './audit';
 import { moveHolders } from './books';
+import { assertPerkRequest } from './constellation';
 import { DomainError } from './errors';
 import { addQ, mulQ, q, type Q } from './rational';
 import { isSkillName, xpThreshold } from './skills';
@@ -235,6 +236,7 @@ export function queuePerk(
   ) {
     throw new DomainError('Заявка на этот перк уже ждёт.');
   }
+  assertPerkRequest(world, heroId, name, skill);
   const next = structuredClone(world);
   next.change_requests.push({
     id: meta.id,
