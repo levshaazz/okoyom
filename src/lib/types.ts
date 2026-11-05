@@ -305,6 +305,65 @@ export interface GameSession {
   table_heroes: string[];
 }
 
+/**
+ * Видимость статьи и раздела.
+ * draft — черновик, hidden — скрыто: оба слоя только у мастера.
+ * public — гости и игроки. players — вошедшие ходоки, не гости.
+ * heroes — герои из wiki_grants на эту статью или раздел.
+ *
+ * TODO(supabase): RLS на wiki_pages и wiki_blocks (политика wiki_blocks_read).
+ * Черновик, hidden и чужие heroes не должны попадать в REST, Realtime и wiki_search.
+ * Локальный IndexedDB хранит мир целиком — фильтр ниже только в интерфейсе, это не защита.
+ */
+export type WikiVisibility = 'draft' | 'hidden' | 'public' | 'players' | 'heroes';
+
+export type WikiCat = 'narody' | 'mesta' | 'bogi' | 'frakcii' | 'bestiarij' | 'predmety';
+
+export type WikiBlockKind = 'heading' | 'para' | 'infobox';
+
+export type WikiMarginKind = 'note' | 'rumor';
+
+export type WikiAudience = 'personal' | 'shared';
+
+export interface WikiPage {
+  slug: string;
+  title: string;
+  cat: WikiCat;
+  /** Самоназвание. Пусто, пока его не открыли. */
+  endonym: string;
+  endonym_gloss: string;
+  aliases: string[];
+  visibility: WikiVisibility;
+  updated_at: string;
+}
+
+export interface WikiBlock {
+  id: string;
+  page_slug: string;
+  ord: number;
+  kind: WikiBlockKind;
+  body_md: string;
+  visibility: WikiVisibility;
+}
+
+/** Грант «лично этому герою». block_id null — на всю статью. */
+export interface WikiGrant {
+  page_slug: string;
+  block_id: string | null;
+  hero_id: string;
+}
+
+/** Заметка или слух игрока на полях статьи. Слух всегда «непроверено». */
+export interface WikiMargin {
+  id: string;
+  page_slug: string;
+  hero_id: string;
+  kind: WikiMarginKind;
+  audience: WikiAudience;
+  body: string;
+  created_at: string;
+}
+
 export interface World {
   revision: number;
   members: Member[];
@@ -324,6 +383,10 @@ export interface World {
   notes: Note[];
   sessions: GameSession[];
   audit_log: AuditEvent[];
+  wiki_pages: WikiPage[];
+  wiki_blocks: WikiBlock[];
+  wiki_grants: WikiGrant[];
+  wiki_margins: WikiMargin[];
   books: Book[];
   book_pages: BookPage[];
   book_copies: BookCopy[];
@@ -331,7 +394,7 @@ export interface World {
   letter_recipients: LetterRecipient[];
 }
 
-export const SEED_REVISION = 4;
+export const SEED_REVISION = 5;
 
 export interface Book {
   id: string;

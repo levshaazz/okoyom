@@ -24,9 +24,22 @@ import {
 import { markLetterRead, openBook, sendLetter } from './books';
 import type { LearnedSpell } from './combat';
 import { queueCraft, type CraftOrder } from './craft';
-import type { HandFill, HandSide } from './types';
-import type { Session, World } from './types';
+import type { HandFill, HandSide, Session, WikiVisibility, World } from './types';
 import { SEED_REVISION } from './types';
+import {
+  addWikiMargin,
+  moveWikiBlock,
+  removeWikiBlock,
+  removeWikiPage,
+  saveWikiBlock,
+  saveWikiPage,
+  setWikiVisibility,
+  removeWikiMargin,
+  type WikiBlockInput,
+  type WikiMarginInput,
+  type WikiPageInput,
+  type WikiTarget,
+} from './wiki';
 
 export const GUEST: Session = { role: 'guest', heroId: null, preview: false };
 
@@ -61,6 +74,19 @@ export interface DataStore {
   requestCraft(heroId: string, order: CraftOrder): Promise<void>;
   rollbackEvent(eventId: string): Promise<void>;
   confirmEvent(eventId: string): Promise<void>;
+  /**
+   * Вики. Позже: gm_reveal_block, сохранение страниц — RPC мастера;
+   * заметки игрока — insert в wiki_margins под RLS (личные видит автор и мастер).
+   * TODO(supabase): выборка страниц и поиска идёт под RLS, скрытый раздел не приходит клиенту.
+   */
+  saveWikiPage(input: WikiPageInput): Promise<void>;
+  saveWikiBlock(input: WikiBlockInput): Promise<void>;
+  removeWikiPage(slug: string): Promise<void>;
+  removeWikiBlock(id: string): Promise<void>;
+  moveWikiBlock(id: string, dir: -1 | 1): Promise<void>;
+  setWikiVisibility(target: WikiTarget, visibility: WikiVisibility, heroIds: string[]): Promise<void>;
+  addWikiMargin(input: WikiMarginInput): Promise<void>;
+  removeWikiMargin(id: string): Promise<void>;
 }
 
 export interface StoreHooks {
@@ -265,6 +291,46 @@ export class CampaignStore implements DataStore {
   async saveNote(heroId: string, body: string): Promise<void> {
     await this.ready();
     await this.commit(saveNote(this.world, this.session, heroId, body, this.meta()));
+  }
+
+  async saveWikiPage(input: WikiPageInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveWikiPage(this.world, this.session, input, this.hooks.now()));
+  }
+
+  async saveWikiBlock(input: WikiBlockInput): Promise<void> {
+    await this.ready();
+    await this.commit(saveWikiBlock(this.world, this.session, input, this.meta()));
+  }
+
+  async removeWikiPage(slug: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeWikiPage(this.world, this.session, slug));
+  }
+
+  async removeWikiBlock(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeWikiBlock(this.world, this.session, id));
+  }
+
+  async moveWikiBlock(id: string, dir: -1 | 1): Promise<void> {
+    await this.ready();
+    await this.commit(moveWikiBlock(this.world, this.session, id, dir));
+  }
+
+  async setWikiVisibility(target: WikiTarget, visibility: WikiVisibility, heroIds: string[]): Promise<void> {
+    await this.ready();
+    await this.commit(setWikiVisibility(this.world, this.session, target, visibility, heroIds, this.hooks.now()));
+  }
+
+  async addWikiMargin(input: WikiMarginInput): Promise<void> {
+    await this.ready();
+    await this.commit(addWikiMargin(this.world, this.session, input, this.meta()));
+  }
+
+  async removeWikiMargin(id: string): Promise<void> {
+    await this.ready();
+    await this.commit(removeWikiMargin(this.world, this.session, id));
   }
 
   async requestCraft(heroId: string, order: CraftOrder): Promise<void> {
