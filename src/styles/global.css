@@ -1141,6 +1141,128 @@ dialog.switcher::backdrop { background: rgba(0, 0, 0, 0.68); }
 .pct-99{width:99%}
 .pct-100{width:100%}
 
+/* Карта */
+.map-stage { position: relative; height: calc(100vh - 58px); background: #14110d; overflow: hidden; }
+.map-gl, .map-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.map-gl { touch-action: none; }
+.map-overlay { pointer-events: none; }
+.map-layers {
+  position: absolute;
+  left: 14px;
+  bottom: 18px;
+  width: min(250px, calc(100% - 28px));
+  z-index: 3;
+  background: rgba(12, 14, 17, 0.9);
+  border: 1px solid var(--rim-dim);
+  padding: 12px 14px;
+  max-height: calc(100% - 90px);
+  overflow: auto;
+}
+.map-layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: var(--text);
+  padding: 4px 0;
+  font-size: 15px;
+}
+.map-layer i {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--rim);
+  display: inline-block;
+  flex: none;
+}
+.map-layer i.on { background: var(--gold); box-shadow: inset 0 0 0 2px #0b0d10; }
+.map-layer.rumor { color: var(--rumor); font-style: italic; }
+.map-north {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  border: 1px solid var(--rim);
+  background: rgba(12, 14, 17, 0.88);
+  color: var(--gold);
+  font-family: "Alegreya SC", serif;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+}
+.map-fog-tools, .map-pin-form, .map-file { display: grid; gap: 6px; margin-top: 8px; }
+.map-fog-tools { display: flex; flex-wrap: wrap; }
+.map-file input, .map-pin-form input, .map-edit input, .map-edit select, .map-fog-tools select {
+  background: #101318;
+  border: 1px solid var(--rim-dim);
+  color: var(--text);
+  padding: 4px 8px;
+  max-width: 100%;
+}
+.map-hint { margin: 8px 0 0; line-height: 1.35; }
+.map-facts { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.map-facts td { padding: 4px 6px 4px 0; vertical-align: top; font-size: 14px; }
+.map-facts td:first-child { color: var(--text-dim); width: 72px; }
+.map-card-sub { margin: 0 0 8px; color: var(--text-dim); }
+.rumor-ink { color: var(--rumor); }
+.map-fallback {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 4;
+  background: rgba(12, 14, 17, 0.9);
+  border: 1px solid var(--rim-dim);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.map-zoom { position: absolute; left: 14px; top: 14px; z-index: 3; border: 1px solid var(--rim-dim); background: rgba(12, 14, 17, 0.88); }
+.map-zoom button { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--salt); font-size: 22px; }
+.map-zoom button + button { border-top: 1px solid var(--rim-dim); }
+.map-pin-form input, .map-edit input, .map-edit select, .map-fog-tools select {
+  background: #101318;
+  border: 1px solid var(--rim-dim);
+  color: var(--text);
+  padding: 4px 8px;
+}
+.map-card {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: min(320px, calc(100% - 28px));
+  max-height: calc(100% - 28px);
+  overflow: auto;
+  background: rgba(12, 14, 17, 0.94);
+  border: 1px solid var(--rim);
+  padding: 12px 14px;
+  z-index: 3;
+}
+.map-card-title { font-family: "Cormorant SC", serif; font-size: 28px; letter-spacing: 0.08em; color: var(--salt); line-height: 1.1; }
+.map-edit { display: grid; gap: 8px; margin-top: 10px; }
+.map-edit label { display: grid; gap: 3px; font-family: "Alegreya SC", serif; font-size: 13px; color: var(--text-dim); }
+.map-underlay { right: 14px; bottom: 14px; left: auto; }
+.map-scale { position: absolute; left: 16px; bottom: 12px; display: flex; align-items: center; gap: 8px; color: #e5dfcf; font-size: 13px; }
+.map-scale span { width: 72px; height: 6px; border: 1px solid #e5dfcf; border-top: none; }
+.chip-row, .check-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip {
+  font-family: "Alegreya SC", serif;
+  font-size: 13px;
+  border: 1px solid var(--rim-dim);
+  color: var(--text-dim);
+  padding: 3px 9px;
+  background: rgba(12, 14, 17, 0.8);
+}
+.chip.on { border-color: var(--gold); color: var(--gold); }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; }
+@media (max-width: 800px) {
+  .map-stage { height: calc(100vh - 52px - 64px); }
+  .map-card { top: auto; bottom: 8px; right: 8px; left: 8px; width: auto; max-height: 42vh; }
+  .map-layers { top: 8px; bottom: auto; max-height: 32vh; width: min(210px, 68%); }
+  .map-hint { display: none; }
+  .map-zoom { left: auto; right: 8px; top: 8px; }
+  .map-north { right: 8px; bottom: 8px; }
+}
+
 /* Летопись */
 .chronicle-head { margin-bottom: 8px; }
 .chronicle-head h1 { font-size: 40px; }

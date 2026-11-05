@@ -305,6 +305,88 @@ export interface GameSession {
   table_heroes: string[];
 }
 
+export type MapTerrain = 'sea' | 'coast' | 'marsh' | 'forest' | 'hills' | 'road';
+export type MapMarkerKind = 'city' | 'town' | 'ruin' | 'cave' | 'camp' | 'wild';
+/** public — все, players — ходоки, heroes — перечисленные, gm — только мастер. */
+export type MapMarkerVisibility = 'public' | 'players' | 'heroes' | 'gm';
+/** unknown — на карте «?», ru — только русское имя, full — самоназвание и перевод. */
+export type MapNameState = 'unknown' | 'ru' | 'full';
+
+export interface WorldMap {
+  id: string;
+  title: string;
+  cols: number;
+  rows: number;
+  /**
+   * Сменная подложка. null — тестовый рисунок по клеткам.
+   * TODO(supabase): настоящая карта не лежит файлом в репозитории.
+   * Клиент получает только тайлы открытых клеток (get_tile_urls). Туман — локальная текстура.
+   */
+  image_data: string | null;
+}
+
+export interface MapCell {
+  map_id: string;
+  cx: number;
+  cy: number;
+  terrain: MapTerrain;
+}
+
+export interface MapReveal {
+  map_id: string;
+  cx: number;
+  cy: number;
+  scope: 'all' | 'hero';
+  hero_id: string | null;
+}
+
+export interface MapMarker {
+  id: string;
+  map_id: string;
+  /** 0..1 по ширине и высоте карты. */
+  x: number;
+  y: number;
+  kind: MapMarkerKind;
+  endonym: string;
+  name_ru: string;
+  name_state: MapNameState;
+  visibility: MapMarkerVisibility;
+  hero_ids: string[];
+  wiki_slug: string | null;
+  blurb: string;
+  threat: string;
+  loot: string;
+  visits: string;
+  hook: string;
+  /** Слух: подпись курсивом и пометка «непроверено». */
+  rumor: boolean;
+}
+
+/** Личная пометка. shared — метка отряда, её видят все ходоки. */
+export interface MapPin {
+  id: string;
+  map_id: string;
+  x: number;
+  y: number;
+  hero_id: string;
+  label: string;
+  shared: boolean;
+}
+
+export interface MapZone {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  tone: 'low' | 'mid' | 'high';
+}
+
+export interface MapRoute {
+  id: string;
+  points: { x: number; y: number }[];
+}
+
+
 /**
  * public — гости и игроки. players — вошедшие ходоки. party — только участники записи.
  *
@@ -452,6 +534,13 @@ export interface World {
   notes: Note[];
   sessions: GameSession[];
   audit_log: AuditEvent[];
+  world_map: WorldMap;
+  map_cells: MapCell[];
+  map_reveals: MapReveal[];
+  map_markers: MapMarker[];
+  map_pins: MapPin[];
+  map_zones: MapZone[];
+  map_routes: MapRoute[];
   chronicle_entries: ChronicleEntry[];
   chronicle_parts: ChroniclePart[];
   chronicle_memories: ChronicleMemory[];
@@ -468,7 +557,7 @@ export interface World {
   letter_recipients: LetterRecipient[];
 }
 
-export const SEED_REVISION = 6;
+export const SEED_REVISION = 7;
 
 export interface Book {
   id: string;

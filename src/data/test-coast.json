@@ -1,0 +1,31 @@
+{
+  "name": "Test Coast (вымышленный тестовый регион, без лора)",
+  "version": "0.1",
+  "private": false,
+  "files": {
+    "albedo": "albedo.jpg",
+    "height": "height16.png",
+    "water": "water.png",
+    "forest": "forest.png"
+  },
+  "size_px": [4096, 2304],
+  "size_km": [40.0, 22.5],
+  "px_m": 9.765625,
+  "height": {
+    "encoding": "uint16 linear",
+    "min_m": -80.0,
+    "max_m": 800.0,
+    "formula": "m = min_m + v/65535*(max_m-min_m)",
+    "sea_level_m": 0,
+    "suggested_vertical_exaggeration": [1.5, 3]
+  },
+  "coords": "x,y 0..1 от левого верхнего угла; север сверху",
+  "places": [
+    { "name": "Test Harbor", "type": "town", "x": 0.47, "y": 0.69, "elevation_m": 3 },
+    { "name": "Lighthouse Point", "type": "landmark", "x": 0.1624, "y": 0.7669, "elevation_m": 85 },
+    { "name": "Mill Lake", "type": "lake", "x": 0.605, "y": 0.4, "elevation_m": 115 },
+    { "name": "Old Bridge", "type": "bridge", "x": 0.55, "y": 0.52, "elevation_m": 53 },
+    { "name": "Pine Ridge", "type": "peak", "x": 0.8972, "y": 0.23, "elevation_m": 795 },
+    { "name": "Seal Island", "type": "island", "x": 0.1, "y": 0.9, "elevation_m": 6 }
+  ]
+}

@@ -29,6 +29,7 @@ const GM_NAV = [
   { id: 'geroi', href: '/master/geroi', label: 'Герои' },
   { id: 'zapiski', href: '/master/zapiski', label: 'Записки' },
   { id: 'mir', href: '/master/mir', label: 'Мир: вики и карта' },
+  { id: 'karta', href: '/karta', label: 'Карта' },
   { id: 'vydat', href: '/master/vydat', label: 'Выдать' },
   { id: 'letopis', href: '/letopis', label: 'Летопись' },
 ];
@@ -227,6 +228,10 @@ export default function Chrome({ page }: Props) {
           <a class={page === 'mir' ? 'on' : ''} href={href('/master/mir')}>
             <IconMap />
             Мир
+          </a>
+          <a class={page === 'karta' ? 'on' : ''} href={href('/karta')}>
+            <IconMap />
+            Карта
           </a>
           <a class={page === 'vydat' ? 'on' : ''} href={href('/master/vydat')}>
             <IconGive />
